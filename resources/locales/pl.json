@@ -1,0 +1,52 @@
+{
+  "menu.file": "Plik",
+  "menu.file.connect": "Połącz",
+  "menu.file.sync": "Synchronizuj",
+  "menu.file.quit": "Wyjście",
+  "menu.help": "Pomoc",
+  "menu.help.about": "O programie",
+  "menu.settings": "Ustawienia",
+  "menu.settings.language": "Język",
+  "menu.settings.language.pl": "Polski",
+  "menu.settings.language.en": "Angielski",
+  "menu.settings.language.de": "Niemiecki",
+
+  "day.mon": "Pon",
+  "day.tue": "Wt",
+  "day.wed": "Śr",
+  "day.thu": "Czw",
+  "day.fri": "Pt",
+  "day.sat": "Sob",
+  "day.sun": "Niedz",
+
+  "panel.activities.title": "Pula czynności",
+  "panel.activities.button.add": "Dodaj",
+
+  "activity.difficulty.LIGHT.label": "Lekki",
+  "activity.difficulty.NORMAL.label": "Normalny",
+  "activity.difficulty.MEDIUM.label": "Średni",
+  "activity.difficulty.HARD.label": "Ciężki",
+
+  "dialog.activity.add": "Dodaj czynność",
+  "dialog.activity.edit": "Edytuj czynność",
+
+  "dialog.activity.name.label": "Nazwa: ",
+  "dialog.activity.name.placeholder": "Nazwa czynności...",
+  "dialog.activity.name.difficulty": "Trudność: ",
+
+  "dialog.connect.title": "Połącz z chmurą",
+  "dialog.connect.url.label": "URL serwera:",
+  "dialog.connect.key.label": "Klucz API:",
+  "dialog.connect.button.connect": "Połącz",
+  "dialog.connect.success.title": "Połączono z chmurą",
+  "dialog.connect.success.text": "Synchronizacja działa poprawnie.",
+  "dialog.connect.error.title": "Błąd połączenia",
+  "dialog.connect.key.placeholder": "Wpisz klucz API...",
+
+  "dialog.about.title": "O programie",
+  "dialog.about.version": "Wersja:",
+  "dialog.about.author": "Autor:",
+
+  "button.ok": "OK",
+  "button.cancel": "Anuluj"
+}

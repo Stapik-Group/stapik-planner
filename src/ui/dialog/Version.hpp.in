@@ -1,0 +1,9 @@
+#pragma once
+
+namespace AppInfo
+{
+    constexpr auto NAME = "@PROJECT_NAME_DISPLAY@";
+    constexpr auto VERSION = "@PROJECT_VERSION@";
+    constexpr auto AUTHOR = "@PROJECT_AUTHOR@";
+    constexpr auto GITHUB = "@PROJECT_GITHUB_URL@";
+}

@@ -1,0 +1,52 @@
+{
+  "menu.file": "File",
+  "menu.file.connect": "Connect",
+  "menu.file.sync": "Sync",
+  "menu.file.quit": "Exit",
+  "menu.help": "Help",
+  "menu.help.about": "About",
+  "menu.settings": "Settings",
+  "menu.settings.language": "Language",
+  "menu.settings.language.pl": "Polish",
+  "menu.settings.language.en": "English",
+  "menu.settings.language.de": "German",
+
+  "day.mon": "Mon",
+  "day.tue": "Tue",
+  "day.wed": "Wed",
+  "day.thu": "Thu",
+  "day.fri": "Fri",
+  "day.sat": "Sat",
+  "day.sun": "Sun",
+
+  "panel.activities.title": "Activity pool",
+  "panel.activities.button.add": "Add",
+
+  "activity.difficulty.LIGHT.label": "Light",
+  "activity.difficulty.NORMAL.label": "Normal",
+  "activity.difficulty.MEDIUM.label": "Medium",
+  "activity.difficulty.HARD.label": "Hard",
+
+  "dialog.activity.add": "Add activity",
+  "dialog.activity.edit": "Edit activity",
+
+  "dialog.activity.name.label": "Name: ",
+  "dialog.activity.name.placeholder": "Activity name...",
+  "dialog.activity.name.difficulty": "Difficulty: ",
+
+  "dialog.connect.title": "Connect to cloud",
+  "dialog.connect.url.label": "Server URL:",
+  "dialog.connect.key.label": "API key:",
+  "dialog.connect.button.connect": "Connect",
+  "dialog.connect.success.title": "Connected to cloud",
+  "dialog.connect.success.text": "Synchronization is working correctly.",
+  "dialog.connect.error.title": "Connection error",
+  "dialog.connect.key.placeholder": "Enter API key...",
+
+  "dialog.about.title": "About",
+  "dialog.about.version": "Version:",
+  "dialog.about.author": "Author:",
+
+  "button.ok": "OK",
+  "button.cancel": "Cancel"
+}

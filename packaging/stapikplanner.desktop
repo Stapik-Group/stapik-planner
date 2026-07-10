@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Stapik Planner
+Comment=Oldschool week planner
+Exec=stapikplanner
+Icon=stapikplanner
+Terminal=false
+Categories=Office;Planner;
+StartupWMClass=stapikplanner

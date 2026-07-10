@@ -1,0 +1,52 @@
+{
+  "menu.file": "Datei",
+  "menu.file.connect": "Verbinden",
+  "menu.file.sync": "Synchronisieren",
+  "menu.file.quit": "Beenden",
+  "menu.help": "Hilfe",
+  "menu.help.about": "Über",
+  "menu.settings": "Einstellungen",
+  "menu.settings.language": "Sprache",
+  "menu.settings.language.pl": "Polnisch",
+  "menu.settings.language.en": "Englisch",
+  "menu.settings.language.de": "Deutsch",
+
+  "day.mon": "Mo",
+  "day.tue": "Di",
+  "day.wed": "Mi",
+  "day.thu": "Do",
+  "day.fri": "Fr",
+  "day.sat": "Sa",
+  "day.sun": "So",
+
+  "panel.activities.title": "Aktivitätenpool",
+  "panel.activities.button.add": "Hinzufügen",
+
+  "activity.difficulty.LIGHT.label": "Leicht",
+  "activity.difficulty.NORMAL.label": "Normal",
+  "activity.difficulty.MEDIUM.label": "Mittel",
+  "activity.difficulty.HARD.label": "Schwer",
+
+  "dialog.activity.add": "Aktivität hinzufügen",
+  "dialog.activity.edit": "Aktivität bearbeiten",
+
+  "dialog.activity.name.label": "Name: ",
+  "dialog.activity.name.placeholder": "Aktivitätsname...",
+  "dialog.activity.name.difficulty": "Schwierigkeit: ",
+
+  "dialog.connect.title": "Mit der Cloud verbinden",
+  "dialog.connect.url.label": "Server-URL:",
+  "dialog.connect.key.label": "API-Schlüssel:",
+  "dialog.connect.button.connect": "Verbinden",
+  "dialog.connect.success.title": "Mit der Cloud verbunden",
+  "dialog.connect.success.text": "Die Synchronisierung funktioniert einwandfrei.",
+  "dialog.connect.error.title": "Verbindungsfehler",
+  "dialog.connect.key.placeholder": "API-Schlüssel eingeben...",
+
+  "dialog.about.title": "Über",
+  "dialog.about.version": "Version:",
+  "dialog.about.author": "Autor:",
+
+  "button.ok": "OK",
+  "button.cancel": "Abbrechen"
+}
