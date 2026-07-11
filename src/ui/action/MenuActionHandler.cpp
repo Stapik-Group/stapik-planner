@@ -1,13 +1,13 @@
 #include "MenuActionHandler.hpp"
 
-#include "../../core/locale/LocaleManager.hpp"
-#include "../../infrastructure/storage/CloudStorageConfigStorage.hpp"
 #include "../dialog/AboutDialog.hpp"
-#include "../dialog/ConnectDialog.hpp"
-#include "../dialog/DialogUtils.hpp"
 
+#include "stapik/locale/LocaleManager.hpp"
+#include "stapik/storage/CloudStorageConfigStorage.hpp"
 #include "stapik/cloud/CloudStorageClient.hpp"
 #include "stapik/cloud/CloudStorageException.hpp"
+#include "stapik/ui/dialog/ConnectDialog.hpp"
+#include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <tuple>
 
@@ -38,7 +38,7 @@ void MenuActionHandler::onActionConnect() const
 {
     auto* dialog = new ConnectDialog(m_window);
 
-    if (const auto config = CloudStorageConfigStorage::load(); config.has_value())
+    if (const auto config = CloudStorageConfigStorage::load("stapikplanner"); config.has_value())
         dialog->prefillConfig(config.value());
 
     dialog->signal_response().connect([this, dialog](const int responseId)
@@ -57,7 +57,7 @@ void MenuActionHandler::onActionConnect() const
 
 void MenuActionHandler::handleConnectResult(const CloudStorageConfig& config) const
 {
-    CloudStorageConfigStorage::save(config);
+    CloudStorageConfigStorage::save(config, "stapikplanner");
     applyCloudConfig(config);
 }
 

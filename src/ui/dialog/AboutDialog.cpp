@@ -1,6 +1,6 @@
 #include "AboutDialog.hpp"
 
-#include "../../core/locale/LocaleManager.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 #include "Version.hpp"
 
 AboutDialog::AboutDialog(Window& parent) :

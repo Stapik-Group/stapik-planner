@@ -1,6 +1,6 @@
 #include "ActivityCatalogItemRow.hpp"
 
-#include "../../../core/locale/LocaleManager.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 ActivityCatalogItemRow::ActivityCatalogItemRow(const Activity &activity) : Box(Gtk::Orientation::HORIZONTAL, 8)
 {

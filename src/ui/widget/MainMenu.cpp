@@ -1,6 +1,6 @@
 #include "MainMenu.hpp"
 
-#include "../../core/locale/LocaleManager.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 MainMenu::MainMenu(Gtk::ApplicationWindow &window, PlannerModel& model) :
     m_window(window),
