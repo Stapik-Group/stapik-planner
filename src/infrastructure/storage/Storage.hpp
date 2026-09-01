@@ -24,6 +24,9 @@ public:
 private:
     static std::filesystem::path storagePath();
 
+    static std::string serializeTimestamp(std::chrono::system_clock::time_point tp);
+    static std::chrono::system_clock::time_point deserializeTimestamp(const std::string& str);
+
     static nlohmann::json activitiesToJson(const Activities& activities);
     static Activities activitiesFromJson(const nlohmann::json& json);
 

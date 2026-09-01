@@ -48,5 +48,6 @@
   "dialog.about.author": "Autor:",
 
   "button.ok": "OK",
-  "button.cancel": "Abbrechen"
+  "button.cancel": "Abbrechen",
+  "dialog.button.cancel": "Abbrechen"
 }

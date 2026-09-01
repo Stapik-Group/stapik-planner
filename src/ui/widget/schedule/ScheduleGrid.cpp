@@ -15,6 +15,12 @@ ScheduleGrid::ScheduleGrid(PlannerModel& model) :
         for (const auto& cell : m_cells)
             cell->setActivities(m_model.activities());
     });
+    m_model.signalWeekPlanChanged().connect([this]
+    {
+        const auto& weekPlan = m_model.weekPlan();
+        for (int i = 0; i < DAYS; ++i)
+            m_cells[i]->setDayPlan(weekPlan[static_cast<std::size_t>(i)]);
+    });
 }
 
 void ScheduleGrid::initLayout()
@@ -40,9 +46,10 @@ void ScheduleGrid::connectCellSignals() const
     {
         m_cells[i]->signalChanged().connect([this, i]
         {
+            using enum Weekday;
             static constexpr std::array weekdays = {
-                Weekday::MONDAY, Weekday::TUESDAY, Weekday::WEDNESDAY, Weekday::THURSDAY,
-                Weekday::FRIDAY, Weekday::SATURDAY, Weekday::SUNDAY
+                MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
+                FRIDAY, SATURDAY, SUNDAY
             };
 
             m_model.updateDay(weekdays[static_cast<size_t>(i)], m_cells[i]->getDayPlan());

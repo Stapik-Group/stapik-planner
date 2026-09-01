@@ -26,6 +26,7 @@ private:
 
     std::vector<Activity> m_activities;
     sigc::signal<void()> m_signalChanged;
+    sigc::connection m_selectionConnection;
 
     static constexpr auto EMPTY_LABEL = "##########";
 

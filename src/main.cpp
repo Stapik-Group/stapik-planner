@@ -4,9 +4,12 @@
 #include "stapik/storage/AppPaths.hpp"
 
 #include "stapik/ui/style/AppStyleProvider.hpp"
+#include "infrastructure/network/CloudSchemaMigrationGuard.hpp"
 
 int main(const int argc, char *argv[])
 {
+    CloudSchemaMigrationGuard::ensureCompatible();
+
     const auto app = Gtk::Application::create("pl.stapik.planner");
     app->signal_activate().connect([app]
     {

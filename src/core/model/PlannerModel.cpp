@@ -2,8 +2,6 @@
 #include "../../infrastructure/storage/Storage.hpp"
 #include "../../infrastructure/storage/PlannerSyncCoordinator.hpp"
 
-#include "stapik/cloud/CloudStorageException.hpp"
-
 #include <chrono>
 #include <utility>
 #include <glibmm/main.h>
@@ -97,6 +95,7 @@ void PlannerModel::syncFromCloud()
     const auto resolved = PlannerSyncCoordinator::resolveOnConnect(m_snapshot, *m_cloudClient);
 
     m_snapshot = resolved;
+    Storage::save(m_snapshot);
     m_signalActivitiesChanged.emit();
     m_signalSettingsChanged.emit();
     m_signalWeekPlanChanged.emit();
@@ -120,19 +119,13 @@ sigc::signal<void()>& PlannerModel::signalWeekPlanChanged()
 void PlannerModel::persist()
 {
     m_snapshot.lastUpdate = std::chrono::system_clock::now();
-    Storage::save(m_snapshot);
 
     if (m_cloudClient != nullptr)
     {
         g_message("[Cloud] Saving in cloud...");
-        try
-        {
-            m_cloudClient->saveJson(Storage::toJson(m_snapshot));
-            g_message("[Cloud] Saved in cloud.");
-        }
-        catch (const CloudStorageException& e)
-        {
-            g_warning("[Cloud] Cloud writing error: %s", e.what());
-        }
+        m_snapshot = PlannerSyncCoordinator::pushLocalChange(m_snapshot, *m_cloudClient);
+        g_message("[Cloud] Saved in cloud.");
     }
+
+    Storage::save(m_snapshot);
 }
