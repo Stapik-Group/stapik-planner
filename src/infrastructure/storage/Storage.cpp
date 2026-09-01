@@ -3,6 +3,7 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <glib.h>
 
 #include "stapik/sync/SyncEnvelope.hpp"
 
@@ -10,8 +11,17 @@ void Storage::save(const Snapshot &snapshot)
 {
     const auto path = storagePath();
     std::filesystem::create_directories(path.parent_path());
-    std::ofstream file(path);
-    file << toJson(snapshot).dump(2);
+    const auto tmpPath = path.string() + ".tmp";
+    {
+        std::ofstream file(tmpPath, std::ios::trunc);
+        file << toJson(snapshot).dump(2);
+        file.flush();
+        if (!file.good())
+            throw StorageException("Failed to write planner state to disk");
+    }
+
+    if (std::rename(tmpPath.c_str(), path.c_str()) != 0)
+        throw StorageException("Failed to persist planner state (atomic rename failed)");
 }
 
 Snapshot Storage::load()
@@ -30,6 +40,10 @@ Snapshot Storage::load()
     }
     catch (const nlohmann::json::exception &)
     {
+        std::error_code ec;
+        std::filesystem::copy_file(path, path.string() + ".corrupted", std::filesystem::copy_options::overwrite_existing, ec);
+        g_warning("[Storage] planner.json was corrupted — backed up to planner.json.corrupted, starting fresh.");
+
         return defaultSnapshot();
     }
 }

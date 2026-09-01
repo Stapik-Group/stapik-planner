@@ -1,4 +1,5 @@
 #include "ScheduleDaySlotContainer.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 ScheduleDaySlotContainer::ScheduleDaySlotContainer() :
     Box(Gtk::Orientation::HORIZONTAL, 4)
@@ -8,12 +9,14 @@ ScheduleDaySlotContainer::ScheduleDaySlotContainer() :
 
 void ScheduleDaySlotContainer::initLayout()
 {
-    m_list_model = Gtk::StringList::create({EMPTY_LABEL});
+    m_list_model = Gtk::StringList::create({LocaleManager::instance().translate("schedule.slot.empty")});
+
     m_dropDown.set_model(m_list_model);
     m_dropDown.set_hexpand(true);
     m_dropDown.set_selected(0);
 
     m_selectionConnection = m_dropDown.property_selected().signal_changed().connect([this] { m_signalChanged.emit(); });
+    m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(m_activities); });
 
     set_margin(2);
     append(m_dropDown);
@@ -33,7 +36,7 @@ void ScheduleDaySlotContainer::refreshModel(const std::vector<Activity>& activit
     while (m_list_model->get_n_items() > 0)
         m_list_model->remove(0);
 
-    m_list_model->append(EMPTY_LABEL);
+    m_list_model->append(LocaleManager::instance().translate("schedule.slot.empty"));
     for (const auto&[name, difficulty] : activities)
         m_list_model->append(name);
 

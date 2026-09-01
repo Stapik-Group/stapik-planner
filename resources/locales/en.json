@@ -11,6 +11,11 @@
   "menu.settings.language.en": "English",
   "menu.settings.language.de": "German",
 
+  "menu.settings.theme": "Theme",
+  "menu.settings.theme.classic": "Classic",
+  "menu.settings.theme.classicPink": "Classic Pink",
+  "menu.settings.theme.modern": "Modern",
+
   "day.mon": "Mon",
   "day.tue": "Tue",
   "day.wed": "Wed",
@@ -21,6 +26,8 @@
 
   "panel.activities.title": "Activity pool",
   "panel.activities.button.add": "Add",
+
+  "schedule.slot.empty": "Free",
 
   "activity.difficulty.LIGHT.label": "Light",
   "activity.difficulty.NORMAL.label": "Normal",

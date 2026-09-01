@@ -23,7 +23,7 @@ include(FetchContent)
 FetchContent_Declare(
         stapikcommon
         GIT_REPOSITORY https://github.com/Stapik-Group/stapik-common.git
-        GIT_TAG v1.1.2
+        GIT_TAG v1.1.6
 )
 FetchContent_MakeAvailable(stapikcommon)
 

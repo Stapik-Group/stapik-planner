@@ -1,0 +1,193 @@
+* {
+    font-family: "Inter", "SF Pro Display", "Segoe UI", "Cantarell", sans-serif;
+    font-size: 12px;
+}
+
+window {
+    background-color: #f5f5f7;
+}
+
+headerbar {
+    background-color: #f5f5f7;
+    border-bottom: 1px solid #e2e2e5;
+    box-shadow: none;
+    min-height: 40px;
+    padding: 4px 8px;
+}
+headerbar .title,
+headerbar label {
+    color: #1c1c1e;
+    font-weight: 600;
+}
+windowcontrols button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+    background-color: #e2e2e5;
+    transition: background-color 120ms ease;
+}
+windowcontrols button:hover {
+    background-color: #d4d4d8;
+}
+
+menubar {
+    background-color: #f5f5f7;
+    border-bottom: 1px solid #e2e2e5;
+    padding: 3px 4px;
+}
+menubar > item {
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: #1c1c1e;
+    transition: background-color 120ms ease;
+}
+menubar > item:hover {
+    background-color: #e8e8ec;
+}
+popover contents {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    padding: 6px;
+}
+popover modelbutton {
+    padding: 6px 12px;
+    border-radius: 7px;
+    color: #1c1c1e;
+    transition: background-color 100ms ease;
+}
+popover modelbutton:hover {
+    background-color: #007aff;
+    color: #ffffff;
+}
+
+button {
+    background-image: none;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #dcdce0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    padding: 5px 12px;
+    color: #1c1c1e;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+button:hover {
+    background-color: #f0f0f3;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+button:active {
+    background-color: #e4e4e8;
+    box-shadow: none;
+    padding: 5px 12px;
+}
+
+dialog {
+    background-color: #f5f5f7;
+}
+dialog .dialog-vbox {
+    background-color: #f5f5f7;
+}
+entry {
+    background-color: #ffffff;
+    border: 1px solid #dcdce0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: #1c1c1e;
+    box-shadow: none;
+    transition: border-color 120ms ease;
+}
+entry:focus {
+    border-color: #007aff;
+}
+
+/* === TODO HEADER === */
+.todo-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e2e5;
+    min-height: 40px;
+}
+.todo-header label {
+    color: #1c1c1e;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* === TODO CELL === */
+.todo-cell {
+    border: none;
+    border-radius: 12px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin: 4px;
+    padding: 10px;
+    min-height: 200px;
+    transition: box-shadow 150ms ease;
+}
+.todo-cell:hover {
+    box-shadow: 0 3px 10px rgba(0,0,0,0.10);
+}
+.todo-cell dropdown {
+    min-height: 36px;
+    font-size: 12px;
+    padding: 6px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+}
+.todo-cell button {
+    min-height: 36px;
+    min-width: 36px;
+    border-radius: 8px;
+}
+
+/* === LOAD BAR === */
+.load-bar {
+    min-height: 10px;
+    margin-top: 6px;
+}
+.load-bar trough {
+    background-color: #e8e8ec;
+    border-radius: 999px;
+    border: none;
+}
+.load-bar block {
+    background-color: #007aff;
+    border-radius: 999px;
+    transition: all 300ms ease;
+}
+.load-label {
+    font-size: 11px;
+    color: #6e6e73;
+    min-width: 40px;
+}
+
+/* === ACTIVITY PANEL === */
+.panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1c1c1e;
+}
+.activity-panel-area {
+    min-height: 280px;
+    border-top: 1px solid #e2e2e5;
+    padding: 10px;
+    background-color: #fafafa;
+}
+.activity-row {
+    border-bottom: 1px solid #ececef;
+    border-radius: 8px;
+    padding: 10px 8px;
+    font-size: 12px;
+    transition: background-color 120ms ease;
+}
+.activity-row:hover {
+    background-color: #f0f0f3;
+}
+.difficulty-label {
+    font-size: 12px;
+    color: #007aff;
+    font-weight: 600;
+}

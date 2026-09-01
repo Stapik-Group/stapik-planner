@@ -36,8 +36,8 @@ void ScheduleDayColumn::setDayPlan(const DayPlan& dayPlan)
     for (size_t i = 0; i < m_slots.size() && i < dayPlan.slots.size(); ++i)
         m_slots[i].setSelected(dayPlan.slots[i]);
 
-    m_suppressChangeSignal = false;
     onSlotChanged();
+    m_suppressChangeSignal = false;
 }
 
 DayPlan ScheduleDayColumn::getDayPlan() const

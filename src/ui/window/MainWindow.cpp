@@ -1,5 +1,7 @@
 #include "MainWindow.hpp"
 
+#include "../../../cmake-build-release/_deps/stapikcommon-src/src/stapik/storage/CloudStorageConfigStorage.hpp"
+
 MainWindow::MainWindow() :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
     m_contentBox(Gtk::Orientation::VERTICAL, 0),
@@ -9,6 +11,7 @@ MainWindow::MainWindow() :
 {
     init();
     initLayout();
+    initCloud();
 }
 
 void MainWindow::init()
@@ -29,4 +32,12 @@ void MainWindow::initLayout()
 
     m_mainBox.append(m_mainMenu.getMenuBar());
     m_mainBox.append(m_contentBox);
+}
+
+void MainWindow::initCloud()
+{
+    const auto config = CloudStorageConfigStorage::load("stapikplanner");
+    if (!config.has_value())
+        return;
+    m_model.setCloudClient(std::make_unique<CloudStorageClient>(config.value(), PLANNER_FILENAME));
 }

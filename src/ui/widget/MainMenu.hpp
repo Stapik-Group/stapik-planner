@@ -22,4 +22,5 @@ private:
 
     void buildModel();
     void initLanguageAction() const;
+    void initThemeAction() const;
 };
