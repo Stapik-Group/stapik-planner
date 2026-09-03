@@ -1,6 +1,9 @@
 #include "Storage.hpp"
 
 #include <fstream>
+#include <chrono>
+#include <ctime>
+#include <glib.h>
 
 #include "stapik/sync/SyncEnvelope.hpp"
 
@@ -8,8 +11,17 @@ void Storage::save(const Snapshot &snapshot)
 {
     const auto path = storagePath();
     std::filesystem::create_directories(path.parent_path());
-    std::ofstream file(path);
-    file << toJson(snapshot).dump(2);
+    const auto tmpPath = path.string() + ".tmp";
+    {
+        std::ofstream file(tmpPath, std::ios::trunc);
+        file << toJson(snapshot).dump(2);
+        file.flush();
+        if (!file.good())
+            throw StorageException("Failed to write planner state to disk");
+    }
+
+    if (std::rename(tmpPath.c_str(), path.c_str()) != 0)
+        throw StorageException("Failed to persist planner state (atomic rename failed)");
 }
 
 Snapshot Storage::load()
@@ -28,8 +40,34 @@ Snapshot Storage::load()
     }
     catch (const nlohmann::json::exception &)
     {
+        std::error_code ec;
+        std::filesystem::copy_file(path, path.string() + ".corrupted", std::filesystem::copy_options::overwrite_existing, ec);
+        g_warning("[Storage] planner.json was corrupted — backed up to planner.json.corrupted, starting fresh.");
+
         return defaultSnapshot();
     }
+}
+
+std::string Storage::serializeTimestamp(const std::chrono::system_clock::time_point tp)
+{
+    return std::format("{:%Y-%m-%dT%H:%M:%SZ}", std::chrono::floor<std::chrono::seconds>(tp));
+}
+
+std::chrono::system_clock::time_point Storage::deserializeTimestamp(const std::string& str)
+{
+    if (str.size() < 19)
+        throw StorageException("Invalid ISO-8601 timestamp: " + str);
+    
+    std::tm tm{};
+    tm.tm_year = std::stoi(str.substr(0, 4)) - 1900;
+    tm.tm_mon = std::stoi(str.substr(5, 2)) - 1;
+    tm.tm_mday = std::stoi(str.substr(8, 2));
+    tm.tm_hour = std::stoi(str.substr(11, 2));
+    tm.tm_min = std::stoi(str.substr(14, 2));
+    tm.tm_sec = std::stoi(str.substr(17, 2));
+
+    const auto time = timegm(&tm);
+    return std::chrono::system_clock::from_time_t(time);
 }
 
 nlohmann::json Storage::toJson(const Snapshot &snapshot)
@@ -39,8 +77,12 @@ nlohmann::json Storage::toJson(const Snapshot &snapshot)
     payload["activities"] = activitiesToJson(snapshot.activities);
     payload["weekPlan"] = weekPlanToJson(snapshot.weekPlan);
 
-    const stapik::sync::SyncEnvelope envelope{ snapshot.lastUpdate, payload };
-    return envelope.toJson();
+    const stapik::sync::SyncEnvelope envelope{ .lastUpdate = snapshot.lastUpdate, .payload = payload };
+    auto json = envelope.toJson();
+    if (snapshot.lastKnownCloudUpdate.has_value())
+        json["lastKnownCloudUpdate"] = serializeTimestamp(snapshot.lastKnownCloudUpdate.value());
+
+    return json;
 }
 
 Snapshot Storage::fromJson(const nlohmann::json& json)
@@ -50,11 +92,16 @@ Snapshot Storage::fromJson(const nlohmann::json& json)
         const auto [lastUpdate, payload] = stapik::sync::SyncEnvelope::fromJson(json);
         const auto settings = settingsFromJson(payload);
 
+        std::optional<std::chrono::system_clock::time_point> lastKnownCloudUpdate;
+        if (json.contains("lastKnownCloudUpdate"))
+            lastKnownCloudUpdate = deserializeTimestamp(json.at("lastKnownCloudUpdate").get<std::string>());
+
         return Snapshot{
-            settings,
-            activitiesFromJson(payload),
-            weekPlanFromJson(payload, settings.slots),
-            lastUpdate
+            .settings = settings,
+            .activities = activitiesFromJson(payload),
+            .weekPlan = weekPlanFromJson(payload, settings.slots),
+            .lastUpdate = lastUpdate,
+            .lastKnownCloudUpdate = lastKnownCloudUpdate
         };
     }
     catch (const nlohmann::json::exception&)
@@ -173,8 +220,8 @@ std::vector<std::optional<Activity>> Storage::slotsFromJson(const nlohmann::json
         if (!item.is_null())
         {
             slots[i] = Activity{
-                item.at("name").get<std::string>(),
-                Activity::deserializeDifficulty(item.at("difficulty").get<std::string>())
+                .name = item.at("name").get<std::string>(),
+                .difficulty = Activity::deserializeDifficulty(item.at("difficulty").get<std::string>())
             };
         }
 
@@ -201,10 +248,11 @@ WeekPlan Storage::defaultWeekPlan(const int slotsCount)
 Snapshot Storage::defaultSnapshot()
 {
     return Snapshot{
-        Settings{},
-        Activities{},
-        defaultWeekPlan(Settings::DEFAULT_SLOTS),
-        std::chrono::system_clock::time_point{}
+        .settings = Settings{},
+        .activities = Activities{},
+        .weekPlan = defaultWeekPlan(Settings::DEFAULT_SLOTS),
+        .lastUpdate = std::chrono::system_clock::time_point{},
+        .lastKnownCloudUpdate = std::nullopt
     };
 }
 

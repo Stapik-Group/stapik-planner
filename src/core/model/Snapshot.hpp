@@ -5,6 +5,7 @@
 #include "WeekPlan.hpp"
 
 #include <chrono>
+#include <optional>
 
 struct Snapshot
 {
@@ -12,4 +13,5 @@ struct Snapshot
     Activities activities;
     WeekPlan weekPlan;
     std::chrono::system_clock::time_point lastUpdate;
+    std::optional<std::chrono::system_clock::time_point> lastKnownCloudUpdate;
 };

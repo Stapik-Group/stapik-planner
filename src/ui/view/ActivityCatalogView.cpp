@@ -1,11 +1,11 @@
 #include "ActivityCatalogView.hpp"
 
-#include "../../core/locale/LocaleManager.hpp"
 #include "../dialog/ActivityDialog.hpp"
 #include "../widget/catalog/ActivityCatalogItemRow.hpp"
 
-#include <gtkmm/window.h>
+#include "stapik/locale/LocaleManager.hpp"
 
+#include <gtkmm/window.h>
 
 ActivityCatalogView::ActivityCatalogView(PlannerModel& model) :
     Box(Gtk::Orientation::VERTICAL, 0),

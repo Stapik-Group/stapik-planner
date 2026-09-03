@@ -17,10 +17,12 @@ public:
     [[nodiscard]] DayPlan getDayPlan() const;
     sigc::signal<void()>& signalChanged();
     void setActivities(const std::vector<Activity>& activities);
+    void setSlotCount(int newSlotCount);
 private:
     static constexpr int LOAD_LIMIT = 100;
 
     int m_slotCount;
+    bool m_suppressChangeSignal = false;
     std::vector<ScheduleDaySlotContainer> m_slots;
     ScheduleDayLoadBar m_loadBar;
     Weekday m_weekday = Weekday::MONDAY;

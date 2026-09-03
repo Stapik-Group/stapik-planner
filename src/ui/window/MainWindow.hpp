@@ -16,6 +16,8 @@ public:
     explicit MainWindow();
     ~MainWindow() override = default;
 private:
+    static constexpr auto PLANNER_FILENAME = "planner.json";
+
     static constexpr int DEFAULT_WIDTH = 1280;
     static constexpr int DEFAULT_HEIGHT = 800;
     static constexpr auto WINDOW_TITLE = "Stapik Planner";
@@ -33,4 +35,5 @@ private:
 
     void init();
     void initLayout();
+    void initCloud();
 };

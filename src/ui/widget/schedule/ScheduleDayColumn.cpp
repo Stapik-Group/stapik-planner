@@ -31,11 +31,40 @@ void ScheduleDayColumn::setActivities(const std::vector<Activity>& activities)
 void ScheduleDayColumn::setDayPlan(const DayPlan& dayPlan)
 {
     m_weekday = dayPlan.weekday;
+    m_suppressChangeSignal = true;
 
     for (size_t i = 0; i < m_slots.size() && i < dayPlan.slots.size(); ++i)
         m_slots[i].setSelected(dayPlan.slots[i]);
 
     onSlotChanged();
+    m_suppressChangeSignal = false;
+}
+
+void ScheduleDayColumn::setSlotCount(const int newSlotCount)
+{
+    if (newSlotCount == static_cast<int>(m_slots.size()))
+        return;
+
+    if (newSlotCount < static_cast<int>(m_slots.size()))
+    {
+        for (auto i = static_cast<std::size_t>(newSlotCount); i < m_slots.size(); ++i)
+            remove(m_slots[i]);
+        m_slots.resize(static_cast<std::size_t>(newSlotCount));
+    }
+    else
+    {
+        remove(m_loadBar);
+        const auto oldSize = m_slots.size();
+        m_slots.resize(static_cast<std::size_t>(newSlotCount));
+        for (std::size_t i = oldSize; i < m_slots.size(); ++i)
+        {
+            m_slots[i].signalChanged().connect([this] { onSlotChanged(); });
+            append(m_slots[i]);
+        }
+        append(m_loadBar);
+    }
+
+    m_slotCount = newSlotCount;
 }
 
 DayPlan ScheduleDayColumn::getDayPlan() const
@@ -58,7 +87,8 @@ void ScheduleDayColumn::onSlotChanged()
     for (auto& slot : m_slots)
         slot.setEnabled(!limitReached);
 
-    m_signalChanged.emit();
+    if (!m_suppressChangeSignal)
+        m_signalChanged.emit();
 }
 
 sigc::signal<void()>& ScheduleDayColumn::signalChanged()

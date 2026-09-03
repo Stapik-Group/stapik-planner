@@ -1,6 +1,6 @@
 #include "ActivityDialog.hpp"
 
-#include "../../core/locale/LocaleManager.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 ActivityDialog::ActivityDialog(Window &parent) :
     Dialog("", parent, true),

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.2)
-project(stapikplanner VERSION 1.0.0 LANGUAGES CXX)
+project(stapikplanner VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -23,22 +23,18 @@ include(FetchContent)
 FetchContent_Declare(
         stapikcommon
         GIT_REPOSITORY https://github.com/Stapik-Group/stapik-common.git
-        GIT_TAG v0.4.0
+        GIT_TAG v1.1.6
 )
 FetchContent_MakeAvailable(stapikcommon)
 
 add_executable(stapikplanner
-        src/core/locale/LocaleManager.cpp
         src/core/model/PlannerModel.cpp
         src/infrastructure/storage/Storage.cpp
-        src/infrastructure/storage/CloudStorageConfigStorage.cpp
         src/infrastructure/storage/PlannerSyncCoordinator.cpp
+        src/infrastructure/network/CloudSchemaMigrationGuard.cpp
         src/ui/action/MenuActionHandler.cpp
-        src/ui/style/AppStyleProvider.cpp
         src/ui/dialog/ActivityDialog.cpp
         src/ui/dialog/AboutDialog.cpp
-        src/ui/dialog/ConnectDialog.cpp
-        src/ui/dialog/DialogUtils.cpp
         src/ui/view/ActivityCatalogView.cpp
         src/ui/view/ScheduleView.cpp
         src/ui/widget/catalog/ActivityCatalogItemRow.cpp

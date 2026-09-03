@@ -8,6 +8,7 @@
 #include <gtkmm/stringlist.h>
 
 #include <sigc++/signal.h>
+#include <sigc++/connection.h>
 #include <optional>
 #include <vector>
 
@@ -26,8 +27,9 @@ private:
 
     std::vector<Activity> m_activities;
     sigc::signal<void()> m_signalChanged;
+    sigc::connection m_selectionConnection;
 
-    static constexpr auto EMPTY_LABEL = "##########";
+    sigc::connection m_localeConnection;
 
     void initLayout();
     void refreshModel(const std::vector<Activity>& activities);

@@ -1,6 +1,6 @@
 #include "ScheduleHeader.hpp"
 
-#include "../../../core/locale/LocaleManager.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 ScheduleHeader::ScheduleHeader() : Box(Gtk::Orientation::HORIZONTAL, 0)
 {

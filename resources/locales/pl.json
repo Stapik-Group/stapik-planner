@@ -11,6 +11,15 @@
   "menu.settings.language.en": "Angielski",
   "menu.settings.language.de": "Niemiecki",
 
+  "menu.settings.theme": "Motyw",
+  "menu.settings.theme.classic": "Klasyczny",
+  "menu.settings.theme.classicPink": "Klasyczny różowy",
+  "menu.settings.theme.modern": "Nowoczesny",
+
+  "menu.settings.slots": "Liczba slotów",
+  "dialog.slots.dataLost.title": "Część planu została utracona",
+  "dialog.slots.dataLost.text": "Zmniejszenie liczby slotów usunęło aktywności zaplanowane poza nowym limitem.",
+
   "day.mon": "Pon",
   "day.tue": "Wt",
   "day.wed": "Śr",
@@ -21,6 +30,8 @@
 
   "panel.activities.title": "Pula czynności",
   "panel.activities.button.add": "Dodaj",
+
+  "schedule.slot.empty": "Wolne",
 
   "activity.difficulty.LIGHT.label": "Lekki",
   "activity.difficulty.NORMAL.label": "Normalny",
@@ -48,5 +59,6 @@
   "dialog.about.author": "Autor:",
 
   "button.ok": "OK",
-  "button.cancel": "Anuluj"
+  "button.cancel": "Anuluj",
+  "dialog.button.cancel": "Anuluj"
 }

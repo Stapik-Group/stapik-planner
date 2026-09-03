@@ -1,4 +1,5 @@
 #include "ScheduleDaySlotContainer.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 
 ScheduleDaySlotContainer::ScheduleDaySlotContainer() :
     Box(Gtk::Orientation::HORIZONTAL, 4)
@@ -8,12 +9,14 @@ ScheduleDaySlotContainer::ScheduleDaySlotContainer() :
 
 void ScheduleDaySlotContainer::initLayout()
 {
-    m_list_model = Gtk::StringList::create({EMPTY_LABEL});
+    m_list_model = Gtk::StringList::create({LocaleManager::instance().translate("schedule.slot.empty")});
+
     m_dropDown.set_model(m_list_model);
     m_dropDown.set_hexpand(true);
     m_dropDown.set_selected(0);
 
-    m_dropDown.property_selected().signal_changed().connect([this] { m_signalChanged.emit(); });
+    m_selectionConnection = m_dropDown.property_selected().signal_changed().connect([this] { m_signalChanged.emit(); });
+    m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(m_activities); });
 
     set_margin(2);
     append(m_dropDown);
@@ -28,15 +31,15 @@ void ScheduleDaySlotContainer::setActivities(const Activities& activities)
 void ScheduleDaySlotContainer::refreshModel(const std::vector<Activity>& activities)
 {
     const auto selected = getSelected();
+    m_selectionConnection.block();
 
     while (m_list_model->get_n_items() > 0)
         m_list_model->remove(0);
 
-    m_list_model->append(EMPTY_LABEL);
+    m_list_model->append(LocaleManager::instance().translate("schedule.slot.empty"));
     for (const auto&[name, difficulty] : activities)
         m_list_model->append(name);
 
-    // przywracamy poprzedni wybór jeśli nadal istnieje
     if (selected.has_value())
     {
         for (guint i = 0; i < static_cast<guint>(activities.size()); ++i)
@@ -44,19 +47,23 @@ void ScheduleDaySlotContainer::refreshModel(const std::vector<Activity>& activit
             if (activities[i].name == selected->name)
             {
                 m_dropDown.set_selected(i + 1);
+                m_selectionConnection.unblock();
                 return;
             }
         }
     }
 
     m_dropDown.set_selected(0);
+    m_selectionConnection.unblock();
 }
 
 void ScheduleDaySlotContainer::setSelected(const std::optional<Activity>& activity)
 {
+    m_selectionConnection.block();
     if (!activity.has_value())
     {
         m_dropDown.set_selected(0);
+        m_selectionConnection.unblock();
         return;
     }
 
@@ -65,11 +72,13 @@ void ScheduleDaySlotContainer::setSelected(const std::optional<Activity>& activi
         if (m_activities[i].name == activity->name)
         {
             m_dropDown.set_selected(i + 1);
+            m_selectionConnection.unblock();
             return;
         }
     }
 
     m_dropDown.set_selected(0);
+    m_selectionConnection.unblock();
 }
 
 std::optional<Activity> ScheduleDaySlotContainer::getSelected() const

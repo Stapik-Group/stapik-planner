@@ -11,6 +11,15 @@
   "menu.settings.language.en": "English",
   "menu.settings.language.de": "German",
 
+  "menu.settings.theme": "Theme",
+  "menu.settings.theme.classic": "Classic",
+  "menu.settings.theme.classicPink": "Classic Pink",
+  "menu.settings.theme.modern": "Modern",
+
+  "menu.settings.slots": "Slots",
+  "dialog.slots.dataLost.title": "Some plan data was lost",
+  "dialog.slots.dataLost.text": "Reducing the slot count removed activities scheduled beyond the new limit.",
+
   "day.mon": "Mon",
   "day.tue": "Tue",
   "day.wed": "Wed",
@@ -21,6 +30,8 @@
 
   "panel.activities.title": "Activity pool",
   "panel.activities.button.add": "Add",
+
+  "schedule.slot.empty": "Free",
 
   "activity.difficulty.LIGHT.label": "Light",
   "activity.difficulty.NORMAL.label": "Normal",
@@ -48,5 +59,6 @@
   "dialog.about.author": "Author:",
 
   "button.ok": "OK",
-  "button.cancel": "Cancel"
+  "button.cancel": "Cancel",
+  "dialog.button.cancel": "Cancel"
 }

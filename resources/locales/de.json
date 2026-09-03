@@ -11,6 +11,15 @@
   "menu.settings.language.en": "Englisch",
   "menu.settings.language.de": "Deutsch",
 
+  "menu.settings.theme": "Design",
+  "menu.settings.theme.classic": "Klassisch",
+  "menu.settings.theme.classicPink": "Klassisch Pink",
+  "menu.settings.theme.modern": "Modern",
+
+  "menu.settings.slots": "Slots",
+  "dialog.slots.dataLost.title": "Ein Teil des Plans ging verloren",
+  "dialog.slots.dataLost.text": "Durch die Verringerung der Slot-Anzahl wurden Aktivitäten außerhalb des neuen Limits entfernt.",
+
   "day.mon": "Mo",
   "day.tue": "Di",
   "day.wed": "Mi",
@@ -21,6 +30,8 @@
 
   "panel.activities.title": "Aktivitätenpool",
   "panel.activities.button.add": "Hinzufügen",
+
+  "schedule.slot.empty": "Frei",
 
   "activity.difficulty.LIGHT.label": "Leicht",
   "activity.difficulty.NORMAL.label": "Normal",
@@ -48,5 +59,6 @@
   "dialog.about.author": "Autor:",
 
   "button.ok": "OK",
-  "button.cancel": "Abbrechen"
+  "button.cancel": "Abbrechen",
+  "dialog.button.cancel": "Abbrechen"
 }
