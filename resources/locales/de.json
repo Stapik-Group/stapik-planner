@@ -16,6 +16,10 @@
   "menu.settings.theme.classicPink": "Klassisch Pink",
   "menu.settings.theme.modern": "Modern",
 
+  "menu.settings.slots": "Slots",
+  "dialog.slots.dataLost.title": "Ein Teil des Plans ging verloren",
+  "dialog.slots.dataLost.text": "Durch die Verringerung der Slot-Anzahl wurden Aktivitäten außerhalb des neuen Limits entfernt.",
+
   "day.mon": "Mo",
   "day.tue": "Di",
   "day.wed": "Mi",

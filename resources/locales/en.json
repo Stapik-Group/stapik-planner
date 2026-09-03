@@ -16,6 +16,10 @@
   "menu.settings.theme.classicPink": "Classic Pink",
   "menu.settings.theme.modern": "Modern",
 
+  "menu.settings.slots": "Slots",
+  "dialog.slots.dataLost.title": "Some plan data was lost",
+  "dialog.slots.dataLost.text": "Reducing the slot count removed activities scheduled beyond the new limit.",
+
   "day.mon": "Mon",
   "day.tue": "Tue",
   "day.wed": "Wed",

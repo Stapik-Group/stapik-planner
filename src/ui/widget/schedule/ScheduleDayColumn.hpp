@@ -17,6 +17,7 @@ public:
     [[nodiscard]] DayPlan getDayPlan() const;
     sigc::signal<void()>& signalChanged();
     void setActivities(const std::vector<Activity>& activities);
+    void setSlotCount(int newSlotCount);
 private:
     static constexpr int LOAD_LIMIT = 100;
 

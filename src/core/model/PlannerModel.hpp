@@ -20,6 +20,7 @@ public:
     void updateActivity(std::size_t index, Activity activity);
     void removeActivity(std::size_t index);
     void updateSettings(Settings settings);
+    [[nodiscard]] bool updateSlotCount(int newSlotCount);
     void updateWeekPlan(const WeekPlan& weekPlan);
     void updateDay(Weekday weekday, DayPlan dayPlan);
 

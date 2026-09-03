@@ -58,6 +58,28 @@ void PlannerModel::updateSettings(Settings settings)
     m_signalSettingsChanged.emit();
 }
 
+bool PlannerModel::updateSlotCount(const int newSlotCount)
+{
+    bool dataLost = false;
+    for (auto& day : m_snapshot.weekPlan)
+    {
+        for (auto i = static_cast<std::size_t>(newSlotCount); i < day.slots.size(); ++i)
+        {
+            if (day.slots[i].has_value())
+                dataLost = true;
+        }
+        day.slots.resize(static_cast<std::size_t>(newSlotCount));
+    }
+
+    m_snapshot.settings.slots = newSlotCount;
+
+    persist();
+    m_signalSettingsChanged.emit();
+    m_signalWeekPlanChanged.emit();
+
+    return dataLost;
+}
+
 void PlannerModel::updateWeekPlan(const WeekPlan& weekPlan)
 {
     m_snapshot.weekPlan = weekPlan;
