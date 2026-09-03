@@ -6,4 +6,4 @@ Exec=stapikplanner
 Icon=stapikplanner
 Terminal=false
 Categories=Office;Planner;
-StartupWMClass=stapikplanner
+StartupWMClass=pl.stapik.planner
