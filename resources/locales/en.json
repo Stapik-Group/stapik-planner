@@ -54,9 +54,6 @@
   "dialog.connect.error.title": "Connection error",
   "dialog.connect.key.placeholder": "Enter API key...",
 
-  "dialog.about.title": "About",
-  "dialog.about.version": "Version:",
-  "dialog.about.author": "Author:",
 
   "button.ok": "OK",
   "button.cancel": "Cancel",

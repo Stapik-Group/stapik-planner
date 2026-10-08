@@ -54,9 +54,6 @@
   "dialog.connect.error.title": "Verbindungsfehler",
   "dialog.connect.key.placeholder": "API-Schlüssel eingeben...",
 
-  "dialog.about.title": "Über",
-  "dialog.about.version": "Version:",
-  "dialog.about.author": "Autor:",
 
   "button.ok": "OK",
   "button.cancel": "Abbrechen",

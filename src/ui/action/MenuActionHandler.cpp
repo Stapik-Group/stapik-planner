@@ -1,11 +1,10 @@
 #include "MenuActionHandler.hpp"
 
-#include "../dialog/AboutDialog.hpp"
-
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/storage/CloudStorageConfigStorage.hpp"
 #include "stapik/cloud/CloudStorageClient.hpp"
 #include "stapik/cloud/CloudStorageException.hpp"
+#include "stapik/ui/dialog/AboutDialog.hpp"
 #include "stapik/ui/dialog/ConnectDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
@@ -31,7 +30,7 @@ void MenuActionHandler::onActionQuit() const
 
 void MenuActionHandler::onActionAbout() const
 {
-    showAutoDeletingDialog<AboutDialog>(m_window);
+    showAboutDialog(m_window);
 }
 
 void MenuActionHandler::onActionConnect() const

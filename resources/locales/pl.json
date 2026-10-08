@@ -54,9 +54,6 @@
   "dialog.connect.error.title": "Błąd połączenia",
   "dialog.connect.key.placeholder": "Wpisz klucz API...",
 
-  "dialog.about.title": "O programie",
-  "dialog.about.version": "Wersja:",
-  "dialog.about.author": "Autor:",
 
   "button.ok": "OK",
   "button.cancel": "Anuluj",

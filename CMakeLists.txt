@@ -7,12 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(PROJECT_NAME_DISPLAY "Stapik Planner")
 set(PROJECT_AUTHOR "Sebastian Smoliński")
 set(PROJECT_GITHUB_URL "https://github.com/Stapik-Group/stapik-planner")
-
-configure_file(
-        ${CMAKE_SOURCE_DIR}/src/ui/dialog/Version.hpp.in
-        ${CMAKE_BINARY_DIR}/generated/Version.hpp
-        @ONLY
-)
+set(PROJECT_APPLICATION_ID "pl.stapik.planner")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-4.0)
@@ -28,13 +23,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(stapikcommon)
 
 add_executable(stapikplanner
+        src/app/PlannerAppInfo.cpp
         src/core/model/PlannerModel.cpp
         src/infrastructure/storage/Storage.cpp
         src/infrastructure/storage/PlannerSyncCoordinator.cpp
         src/infrastructure/network/CloudSchemaMigrationGuard.cpp
         src/ui/action/MenuActionHandler.cpp
         src/ui/dialog/ActivityDialog.cpp
-        src/ui/dialog/AboutDialog.cpp
         src/ui/view/ActivityCatalogView.cpp
         src/ui/view/ScheduleView.cpp
         src/ui/widget/catalog/ActivityCatalogItemRow.cpp
@@ -49,14 +44,24 @@ add_executable(stapikplanner
 )
 
 target_include_directories(stapikplanner PRIVATE ${GTKMM_INCLUDE_DIRS})
-target_include_directories(stapikplanner PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(stapikplanner PRIVATE ${GTKMM_CFLAGS_OTHER})
+target_compile_definitions(stapikplanner PRIVATE
+        STAPIK_APP_APPLICATION_ID="${PROJECT_APPLICATION_ID}"
+        STAPIK_APP_NAME="${PROJECT_NAME}"
+        STAPIK_APP_DISPLAY_NAME="${PROJECT_NAME_DISPLAY}"
+        STAPIK_APP_VERSION="${PROJECT_VERSION}"
+        STAPIK_APP_AUTHOR="${PROJECT_AUTHOR}"
+        STAPIK_APP_REPOSITORY_URL="${PROJECT_GITHUB_URL}"
+)
 target_link_libraries(stapikplanner PRIVATE ${GTKMM_LIBRARIES} stapikcommon CURL::libcurl nlohmann_json::nlohmann_json)
 
 add_custom_command(TARGET stapikplanner POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/resources
-        $<TARGET_FILE_DIR:stapikplanner>/resources)
+        $<TARGET_FILE_DIR:stapikplanner>/resources
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${STAPIK_COMMON_RESOURCES_DIR}
+        $<TARGET_FILE_DIR:stapikplanner>/resources/stapik-common)
 
 install(TARGETS stapikplanner
         RUNTIME DESTINATION lib/stapikplanner
@@ -64,6 +69,10 @@ install(TARGETS stapikplanner
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/resources/
         DESTINATION lib/stapikplanner/resources
+)
+
+install(DIRECTORY ${STAPIK_COMMON_RESOURCES_DIR}/
+        DESTINATION lib/stapikplanner/resources/stapik-common
 )
 
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/packaging/stapikplanner-launcher.sh
