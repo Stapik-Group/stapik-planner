@@ -1,18 +1,37 @@
 #include "PlannerSyncCoordinator.hpp"
-#include "Storage.hpp"
+
 #include "stapik/cloud/CloudStorageException.hpp"
+#include "stapik/log/Log.hpp"
+#include "stapik/sync/SyncEnvelope.hpp"
 
 #include <glib.h>
 
-Snapshot PlannerSyncCoordinator::fromCloudDocument(const CloudDocument& document)
+#include <exception>
+
+namespace
 {
-    auto snapshot = Storage::fromJson(document.content);
-    snapshot.lastKnownCloudUpdate = document.updatedAt;
-    return snapshot;
+    nlohmann::json toCloudContent(const PlannerDocument& document)
+    {
+        return stapik::sync::SyncEnvelope{ .lastUpdate = document.lastUpdate(), .payload = document.toJson() }.toJson();
+    }
 }
 
-Snapshot PlannerSyncCoordinator::pushWithConflictResolution(
-    const Snapshot& local,
+PlannerDocument PlannerSyncCoordinator::fromCloudDocument(const CloudDocument& cloudDocument, const PlannerDocument& fallback)
+{
+    try
+    {
+        const auto envelope = stapik::sync::SyncEnvelope::fromJson(cloudDocument.content);
+        return PlannerDocument::fromJson(envelope.payload).withLastKnownCloudUpdate(cloudDocument.updatedAt);
+    }
+    catch (const std::exception& exception)
+    {
+        stapik::log::warning("Cannot read the cloud document, keeping the local one: {}", exception.what());
+        return fallback;
+    }
+}
+
+PlannerDocument PlannerSyncCoordinator::pushWithConflictResolution(
+    const PlannerDocument& local,
     CloudStorageClient& cloudClient,
     const std::optional<std::chrono::system_clock::time_point> baseline)
 {
@@ -20,7 +39,7 @@ Snapshot PlannerSyncCoordinator::pushWithConflictResolution(
 
     try
     {
-        result = cloudClient.saveDocument(Storage::toJson(local), baseline.value_or(std::chrono::system_clock::time_point{}));
+        result = cloudClient.saveDocument(toCloudContent(local), baseline.value_or(std::chrono::system_clock::time_point{}));
     }
     catch (const CloudStorageException&)
     {
@@ -29,30 +48,22 @@ Snapshot PlannerSyncCoordinator::pushWithConflictResolution(
     }
 
     if (!result.conflict)
-    {
-        auto snapshot = local;
-        snapshot.lastKnownCloudUpdate = result.document.updatedAt;
-        return snapshot;
-    }
+        return local.withLastKnownCloudUpdate(result.document.updatedAt);
 
     // Server has a newer document than we knew about.
-    if (result.document.updatedAt > local.lastUpdate)
-        return fromCloudDocument(result.document);
+    if (result.document.updatedAt > local.lastUpdate())
+        return fromCloudDocument(result.document, local);
 
     // We're still newer (rare race) — one retry against the server's current baseline.
     try
     {
-        const auto [document, conflict] = cloudClient.saveDocument(Storage::toJson(local), result.document.updatedAt);
+        const auto [document, conflict] = cloudClient.saveDocument(toCloudContent(local), result.document.updatedAt);
 
         if (!conflict)
-        {
-            auto snapshot = local;
-            snapshot.lastKnownCloudUpdate = document.updatedAt;
-            return snapshot;
-        }
+            return local.withLastKnownCloudUpdate(document.updatedAt);
 
         // Lost the race twice — accept the server's version to avoid looping.
-        return fromCloudDocument(document);
+        return fromCloudDocument(document, local);
     }
     catch (const CloudStorageException&)
     {
@@ -61,7 +72,7 @@ Snapshot PlannerSyncCoordinator::pushWithConflictResolution(
     }
 }
 
-Snapshot PlannerSyncCoordinator::resolveOnConnect(const Snapshot& local, CloudStorageClient& cloudClient)
+PlannerDocument PlannerSyncCoordinator::resolveOnConnect(const PlannerDocument& local, CloudStorageClient& cloudClient)
 {
     std::optional<CloudDocument> remote;
 
@@ -78,13 +89,13 @@ Snapshot PlannerSyncCoordinator::resolveOnConnect(const Snapshot& local, CloudSt
     if (!remote.has_value())
         return pushWithConflictResolution(local, cloudClient, std::nullopt);
 
-    if (remote->updatedAt > local.lastUpdate)
-        return fromCloudDocument(remote.value());
+    if (remote->updatedAt > local.lastUpdate())
+        return fromCloudDocument(remote.value(), local);
 
     return pushWithConflictResolution(local, cloudClient, remote->updatedAt);
 }
 
-Snapshot PlannerSyncCoordinator::pushLocalChange(const Snapshot& local, CloudStorageClient& cloudClient)
+PlannerDocument PlannerSyncCoordinator::pushLocalChange(const PlannerDocument& local, CloudStorageClient& cloudClient)
 {
-    return pushWithConflictResolution(local, cloudClient, local.lastKnownCloudUpdate);
+    return pushWithConflictResolution(local, cloudClient, local.lastKnownCloudUpdate());
 }

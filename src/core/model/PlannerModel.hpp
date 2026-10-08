@@ -1,16 +1,19 @@
 #pragma once
 
-#include "Snapshot.hpp"
+#include "PlannerDocument.hpp"
 #include "stapik/cloud/CloudStorageClient.hpp"
 
 #include <sigc++/signal.h>
 #include <cstddef>
 #include <memory>
 
+class PlannerStorage;
+
 class PlannerModel
 {
 public:
     explicit PlannerModel();
+    ~PlannerModel();
 
     [[nodiscard]] const Settings& settings() const;
     [[nodiscard]] const Activities& activities() const;
@@ -31,7 +34,8 @@ public:
     sigc::signal<void()>& signalSettingsChanged();
     sigc::signal<void()>& signalWeekPlanChanged();
 private:
-    Snapshot m_snapshot;
+    std::unique_ptr<PlannerStorage> m_storage;
+    PlannerDocument m_document;
     std::unique_ptr<CloudStorageClient> m_cloudClient;
 
     sigc::signal<void()> m_signalActivitiesChanged;
@@ -39,5 +43,6 @@ private:
     sigc::signal<void()> m_signalWeekPlanChanged;
 
     void persist();
+    void saveToDisk();
     void syncFromCloud();
 };

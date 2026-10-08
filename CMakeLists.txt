@@ -9,6 +9,8 @@ set(PROJECT_AUTHOR "Sebastian Smoliński")
 set(PROJECT_GITHUB_URL "https://github.com/Stapik-Group/stapik-planner")
 set(PROJECT_APPLICATION_ID "pl.stapik.planner")
 
+option(STAPIK_PLANNER_BUILD_TESTS "Build the Stapik Planner unit tests" OFF)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM REQUIRED IMPORTED_TARGET gtkmm-4.0)
 
@@ -22,10 +24,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stapikcommon)
 
+add_library(stapikplannercore STATIC
+        src/core/model/PlannerDocument.cpp
+        src/infrastructure/storage/PlannerStorage.cpp
+)
+
+target_include_directories(stapikplannercore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(stapikplannercore PUBLIC stapikcommon nlohmann_json::nlohmann_json)
+stapik_enable_warnings(stapikplannercore)
+
 add_executable(stapikplanner
         src/app/PlannerAppInfo.cpp
         src/core/model/PlannerModel.cpp
-        src/infrastructure/storage/Storage.cpp
         src/infrastructure/storage/PlannerSyncCoordinator.cpp
         src/infrastructure/network/CloudSchemaMigrationGuard.cpp
         src/ui/action/MenuActionHandler.cpp
@@ -53,7 +63,7 @@ target_compile_definitions(stapikplanner PRIVATE
         STAPIK_APP_AUTHOR="${PROJECT_AUTHOR}"
         STAPIK_APP_REPOSITORY_URL="${PROJECT_GITHUB_URL}"
 )
-target_link_libraries(stapikplanner PRIVATE ${GTKMM_LIBRARIES} stapikcommon CURL::libcurl nlohmann_json::nlohmann_json)
+target_link_libraries(stapikplanner PRIVATE ${GTKMM_LIBRARIES} stapikplannercore stapikcommon CURL::libcurl nlohmann_json::nlohmann_json)
 
 add_custom_command(TARGET stapikplanner POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -62,6 +72,11 @@ add_custom_command(TARGET stapikplanner POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${STAPIK_COMMON_RESOURCES_DIR}
         $<TARGET_FILE_DIR:stapikplanner>/resources/stapik-common)
+
+if(STAPIK_PLANNER_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 install(TARGETS stapikplanner
         RUNTIME DESTINATION lib/stapikplanner

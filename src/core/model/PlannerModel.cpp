@@ -1,59 +1,65 @@
 #include "PlannerModel.hpp"
-#include "../../infrastructure/storage/Storage.hpp"
+#include "../../infrastructure/storage/PlannerStorage.hpp"
 #include "../../infrastructure/storage/PlannerSyncCoordinator.hpp"
+
+#include "stapik/log/Log.hpp"
 
 #include <chrono>
 #include <utility>
 #include <glibmm/main.h>
 
-PlannerModel::PlannerModel() : m_snapshot(Storage::load())
+PlannerModel::PlannerModel() :
+    m_storage(std::make_unique<PlannerStorage>()),
+    m_document(m_storage->load())
 {}
+
+PlannerModel::~PlannerModel() = default;
 
 const Settings& PlannerModel::settings() const
 {
-    return m_snapshot.settings;
+    return m_document.settings;
 }
 
 const Activities& PlannerModel::activities() const
 {
-    return m_snapshot.activities;
+    return m_document.activities;
 }
 
 const WeekPlan& PlannerModel::weekPlan() const
 {
-    return m_snapshot.weekPlan;
+    return m_document.weekPlan;
 }
 
 void PlannerModel::addActivity(Activity activity)
 {
-    m_snapshot.activities.push_back(std::move(activity));
+    m_document.activities.push_back(std::move(activity));
     persist();
     m_signalActivitiesChanged.emit();
 }
 
 void PlannerModel::updateActivity(const std::size_t index, Activity activity)
 {
-    if (index >= m_snapshot.activities.size())
+    if (index >= m_document.activities.size())
         return;
 
-    m_snapshot.activities[index] = std::move(activity);
+    m_document.activities[index] = std::move(activity);
     persist();
     m_signalActivitiesChanged.emit();
 }
 
 void PlannerModel::removeActivity(const std::size_t index)
 {
-    if (index >= m_snapshot.activities.size())
+    if (index >= m_document.activities.size())
         return;
 
-    m_snapshot.activities.erase(m_snapshot.activities.begin() + static_cast<Activities::difference_type>(index));
+    m_document.activities.erase(m_document.activities.begin() + static_cast<Activities::difference_type>(index));
     persist();
     m_signalActivitiesChanged.emit();
 }
 
 void PlannerModel::updateSettings(Settings settings)
 {
-    m_snapshot.settings = settings;
+    m_document.settings = settings;
     persist();
     m_signalSettingsChanged.emit();
 }
@@ -61,7 +67,7 @@ void PlannerModel::updateSettings(Settings settings)
 bool PlannerModel::updateSlotCount(const int newSlotCount)
 {
     bool dataLost = false;
-    for (auto& day : m_snapshot.weekPlan)
+    for (auto& day : m_document.weekPlan)
     {
         for (auto i = static_cast<std::size_t>(newSlotCount); i < day.slots.size(); ++i)
         {
@@ -71,7 +77,7 @@ bool PlannerModel::updateSlotCount(const int newSlotCount)
         day.slots.resize(static_cast<std::size_t>(newSlotCount));
     }
 
-    m_snapshot.settings.slots = newSlotCount;
+    m_document.settings.slots = newSlotCount;
 
     persist();
     m_signalSettingsChanged.emit();
@@ -82,7 +88,7 @@ bool PlannerModel::updateSlotCount(const int newSlotCount)
 
 void PlannerModel::updateWeekPlan(const WeekPlan& weekPlan)
 {
-    m_snapshot.weekPlan = weekPlan;
+    m_document.weekPlan = weekPlan;
     persist();
     m_signalWeekPlanChanged.emit();
 }
@@ -90,10 +96,10 @@ void PlannerModel::updateWeekPlan(const WeekPlan& weekPlan)
 void PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
 {
     const auto index = static_cast<std::size_t>(weekday);
-    if (index >= m_snapshot.weekPlan.size())
+    if (index >= m_document.weekPlan.size())
         return;
 
-    m_snapshot.weekPlan[index] = std::move(dayPlan);
+    m_document.weekPlan[index] = std::move(dayPlan);
     persist();
     m_signalWeekPlanChanged.emit();
 }
@@ -114,10 +120,8 @@ void PlannerModel::syncFromCloud()
     if (m_cloudClient == nullptr)
         return;
 
-    const auto resolved = PlannerSyncCoordinator::resolveOnConnect(m_snapshot, *m_cloudClient);
-
-    m_snapshot = resolved;
-    Storage::save(m_snapshot);
+    m_document = PlannerSyncCoordinator::resolveOnConnect(m_document, *m_cloudClient);
+    saveToDisk();
     m_signalActivitiesChanged.emit();
     m_signalSettingsChanged.emit();
     m_signalWeekPlanChanged.emit();
@@ -140,14 +144,20 @@ sigc::signal<void()>& PlannerModel::signalWeekPlanChanged()
 
 void PlannerModel::persist()
 {
-    m_snapshot.lastUpdate = std::chrono::system_clock::now();
+    m_document.updatedAt = std::chrono::system_clock::now();
 
     if (m_cloudClient != nullptr)
     {
         g_message("[Cloud] Saving in cloud...");
-        m_snapshot = PlannerSyncCoordinator::pushLocalChange(m_snapshot, *m_cloudClient);
+        m_document = PlannerSyncCoordinator::pushLocalChange(m_document, *m_cloudClient);
         g_message("[Cloud] Saved in cloud.");
     }
 
-    Storage::save(m_snapshot);
+    saveToDisk();
+}
+
+void PlannerModel::saveToDisk()
+{
+    if (!m_storage->save(m_document))
+        stapik::log::warning("Cannot save the planner to {}", m_storage->filePath().string());
 }

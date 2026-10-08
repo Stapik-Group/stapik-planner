@@ -41,6 +41,14 @@ cmake -B cmake-build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release
 ```
 
+To build and run the unit tests as well:
+
+```bash
+cmake -B cmake-build-tests -DCMAKE_BUILD_TYPE=Debug -DSTAPIK_PLANNER_BUILD_TESTS=ON
+cmake --build cmake-build-tests
+ctest --test-dir cmake-build-tests --output-on-failure
+```
+
 ## Installation
 
 ### Option 1 — Download prebuilt `.deb` (recommended)
@@ -114,7 +122,7 @@ The number of activity slots per day (3–6) can be changed from **Settings → 
 
 ## Data Storage
 
-Schedule, catalog and settings are stored locally at `~/.local/share/stapikplanner/planner.json`, wrapped with a `lastUpdate` timestamp used for cloud sync. Cloud config at `~/.local/share/stapikplanner/config.json`. Language preference at `~/.local/share/stapikplanner/locale.txt`. Theme preference at `~/.local/share/stapikplanner/theme.txt`.
+Schedule, catalog and settings are stored locally at `~/.local/share/stapikplanner/planner.json` (`$XDG_DATA_HOME/stapikplanner/planner.json` when `XDG_DATA_HOME` is set). The file is versioned with a `schemaVersion` and carries the `lastUpdate` timestamp used for cloud sync; files written by earlier versions are migrated when they are loaded. Every save keeps the previous file as `planner.json.bak`. A file that cannot be read is never silently overwritten: an unreadable one is moved aside as `planner.json.corrupt-<time>`, and one written by a newer version of the app as `planner.json.newer-version-<time>`. Cloud config at `~/.local/share/stapikplanner/config.json`. Language preference at `~/.local/share/stapikplanner/locale.txt`. Theme preference at `~/.local/share/stapikplanner/theme.txt`.
 
 ## Themes
 
