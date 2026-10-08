@@ -84,9 +84,19 @@ TEST_F(PlannerSyncCompatibilityTest, NewerLocalDocumentIsUploadedInTheEnvelopeFo
 
 TEST_F(PlannerSyncCompatibilityTest, CloudDocumentUploadedByAnEarlierVersionIsReadable)
 {
-    // An earlier version put "lastUpdate" only in the envelope, never inside the payload.
+    // An earlier version put "lastUpdate" only in the envelope, and wrote no ids.
     auto payload = makeSampleDocument(0).toJson();
     payload.erase("lastUpdate");
+    for (auto& activityJson : payload.at("activities"))
+        activityJson.erase("id");
+    for (auto& dayJson : payload.at("weekPlan"))
+    {
+        for (auto& slotJson : dayJson.at("slots"))
+        {
+            if (!slotJson.is_null())
+                slotJson.erase("id");
+        }
+    }
     m_fake.stored = CloudDocument{
         .content = SyncEnvelope{ .lastUpdate = at(200), .payload = payload }.toJson(),
         .updatedAt = at(900)
@@ -96,7 +106,10 @@ TEST_F(PlannerSyncCompatibilityTest, CloudDocumentUploadedByAnEarlierVersionIsRe
 
     EXPECT_EQ(outcome.state, SyncState::ServerWon);
     EXPECT_EQ(outcome.document.activities.size(), 2U);
+    ASSERT_TRUE(outcome.document.weekPlan[0].slots[0].has_value());
     EXPECT_EQ(outcome.document.weekPlan[0].slots[0]->name, "Gym");
+    EXPECT_EQ(outcome.document.weekPlan[0].slots[0]->id, outcome.document.activities[0].id);
+    EXPECT_FALSE(outcome.document.activities[0].id.empty());
 }
 
 TEST_F(PlannerSyncCompatibilityTest, UnreadableCloudDocumentKeepsTheLocalOne)

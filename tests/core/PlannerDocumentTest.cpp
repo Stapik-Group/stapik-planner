@@ -20,6 +20,20 @@ namespace
     static_assert(stapik::document::PersistableDocument<PlannerDocument>);
     static_assert(stapik::sync::SyncableDocument<PlannerDocument>);
 
+    // A document as written before the activities had ids: only names and difficulties.
+    nlohmann::json legacyDocumentJson()
+    {
+        return {
+            { "activities", nlohmann::json::array({
+                { { "name", "Gym" }, { "difficulty", "hard" } },
+                { { "name", "Reading" }, { "difficulty", "light" } }
+            }) },
+            { "weekPlan", nlohmann::json::array({
+                { { "weekday", "monday" }, { "slots", nlohmann::json::array({ nullptr, nullptr, { { "name", "Reading" }, { "difficulty", "light" } } }) } }
+            }) }
+        };
+    }
+
     nlohmann::json roundTrip(const PlannerDocument& document)
     {
         return PlannerDocument::fromJson(document.toJson()).toJson();
@@ -113,6 +127,10 @@ TEST(PlannerDocumentTest, SlotsAreTruncatedOrPaddedToTheSlotCount)
 {
     const nlohmann::json json = {
         { "settings", { { "slots", 3 } } },
+        { "activities", nlohmann::json::array({
+            { { "name", "Run" }, { "difficulty", "medium" } },
+            { { "name", "Lost" }, { "difficulty", "hard" } }
+        }) },
         { "weekPlan", nlohmann::json::array({
             { { "weekday", "monday" }, { "slots", nlohmann::json::array({ nullptr, nullptr, nullptr, { { "name", "Lost" }, { "difficulty", "hard" } } }) } },
             { { "weekday", "tuesday" }, { "slots", nlohmann::json::array({ { { "name", "Run" }, { "difficulty", "medium" } } }) } }
@@ -172,14 +190,148 @@ TEST(PlannerDocumentTest, PayloadKeepsTheShapeReadByEarlierVersions)
     EXPECT_EQ(json.at("settings").at("slots"), Settings::DEFAULT_SLOTS);
 
     ASSERT_EQ(json.at("activities").size(), 2U);
-    EXPECT_EQ(json.at("activities")[0], (nlohmann::json{ { "name", "Gym" }, { "difficulty", "hard" } }));
+    EXPECT_EQ(json.at("activities")[0].at("name"), "Gym");
+    EXPECT_EQ(json.at("activities")[0].at("difficulty"), "hard");
 
     ASSERT_EQ(json.at("weekPlan").size(), 7U);
     const auto& monday = json.at("weekPlan")[0];
     EXPECT_EQ(monday.at("weekday"), "monday");
     ASSERT_EQ(monday.at("slots").size(), 4U);
-    EXPECT_EQ(monday.at("slots")[0], (nlohmann::json{ { "name", "Gym" }, { "difficulty", "hard" } }));
+    EXPECT_EQ(monday.at("slots")[0].at("name"), "Gym");
+    EXPECT_EQ(monday.at("slots")[0].at("difficulty"), "hard");
     EXPECT_TRUE(monday.at("slots")[1].is_null());
+}
+
+TEST(PlannerDocumentTest, ActivitiesAndTheirSlotsAreWrittenWithTheIds)
+{
+    const auto json = makeSampleDocument(10).toJson();
+
+    EXPECT_EQ(json.at("activities")[0].at("id"), "gym");
+    EXPECT_EQ(json.at("activities")[1].at("id"), "reading");
+    EXPECT_EQ(json.at("weekPlan")[0].at("slots")[0].at("id"), "gym");
+    EXPECT_EQ(json.at("weekPlan")[0].at("slots")[2].at("id"), "reading");
+}
+
+TEST(PlannerDocumentTest, DocumentWithoutIdsGetsUniqueIdsAndItsSlotsAreLinkedToTheCatalog)
+{
+    const auto legacy = legacyDocumentJson();
+
+    const auto document = PlannerDocument::fromJson(legacy);
+
+    ASSERT_EQ(document.activities.size(), 2U);
+    EXPECT_FALSE(document.activities[0].id.empty());
+    EXPECT_FALSE(document.activities[1].id.empty());
+    EXPECT_NE(document.activities[0].id, document.activities[1].id);
+    ASSERT_TRUE(document.weekPlan[0].slots[2].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[2]->id, document.activities[1].id);
+    EXPECT_EQ(document.weekPlan[0].slots[2]->name, "Reading");
+}
+
+TEST(PlannerDocumentTest, GeneratedIdsStayStableOnceTheDocumentIsLoaded)
+{
+    const auto loaded = PlannerDocument::fromJson(legacyDocumentJson());
+
+    EXPECT_EQ(PlannerDocument::fromJson(loaded.toJson()).toJson(), loaded.toJson());
+}
+
+TEST(PlannerDocumentTest, SlotWithoutIdPrefersTheActivityWithTheSameNameAndDifficulty)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({
+            { { "name", "Run" }, { "difficulty", "light" } },
+            { { "name", "Run" }, { "difficulty", "hard" } }
+        }) },
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "monday" }, { "slots", nlohmann::json::array({ { { "name", "Run" }, { "difficulty", "hard" } } }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    ASSERT_TRUE(document.weekPlan[0].slots[0].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[0]->id, document.activities[1].id);
+}
+
+TEST(PlannerDocumentTest, SlotWithoutIdFallsBackToTheFirstActivityWithTheSameNameAndTakesItsDifficulty)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({
+            { { "name", "Run" }, { "difficulty", "light" } },
+            { { "name", "Run" }, { "difficulty", "hard" } }
+        }) },
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "monday" }, { "slots", nlohmann::json::array({ { { "name", "Run" }, { "difficulty", "medium" } } }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    ASSERT_TRUE(document.weekPlan[0].slots[0].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[0]->id, document.activities[0].id);
+    EXPECT_EQ(document.weekPlan[0].slots[0]->difficulty, Difficulty::LIGHT);
+}
+
+TEST(PlannerDocumentTest, SlotsOfActivitiesMissingFromTheCatalogAreDropped)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({ { { "id", "gym" }, { "name", "Gym" }, { "difficulty", "hard" } } }) },
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "monday" }, { "slots", nlohmann::json::array({
+                { { "name", "Renamed long ago" }, { "difficulty", "hard" } },
+                { { "id", "removed" }, { "name", "Gym" }, { "difficulty", "hard" } },
+                { { "id", "gym" }, { "name", "Gym" }, { "difficulty", "hard" } }
+            }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    EXPECT_FALSE(document.weekPlan[0].slots[0].has_value());
+    EXPECT_FALSE(document.weekPlan[0].slots[1].has_value());
+    ASSERT_TRUE(document.weekPlan[0].slots[2].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[2]->id, "gym");
+}
+
+TEST(PlannerDocumentTest, SlotTakesTheCurrentNameAndDifficultyOfItsActivity)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({ { { "id", "gym" }, { "name", "Strength" }, { "difficulty", "hard" } } }) },
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "monday" }, { "slots", nlohmann::json::array({ { { "id", "gym" }, { "name", "Gym" }, { "difficulty", "light" } } }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    ASSERT_TRUE(document.weekPlan[0].slots[0].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[0]->name, "Strength");
+    EXPECT_EQ(document.weekPlan[0].slots[0]->difficulty, Difficulty::HARD);
+    EXPECT_EQ(document.weekPlan[0].totalLoad(), 50);
+}
+
+TEST(PlannerDocumentTest, MissingAndRepeatedIdsAreReplacedKeepingTheFirstOne)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({
+            { { "id", "same" }, { "name", "First" }, { "difficulty", "light" } },
+            { { "id", "same" }, { "name", "Second" }, { "difficulty", "light" } },
+            { { "id", "" }, { "name", "Third" }, { "difficulty", "light" } }
+        }) },
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "monday" }, { "slots", nlohmann::json::array({ { { "id", "same" }, { "name", "First" }, { "difficulty", "light" } } }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    ASSERT_EQ(document.activities.size(), 3U);
+    EXPECT_EQ(document.activities[0].id, "same");
+    EXPECT_FALSE(document.activities[1].id.empty());
+    EXPECT_NE(document.activities[1].id, "same");
+    EXPECT_FALSE(document.activities[2].id.empty());
+    EXPECT_NE(document.activities[1].id, document.activities[2].id);
+    ASSERT_TRUE(document.weekPlan[0].slots[0].has_value());
+    EXPECT_EQ(document.weekPlan[0].slots[0]->name, "First");
 }
 
 TEST(PlannerDocumentTest, RoundTripIsStable)

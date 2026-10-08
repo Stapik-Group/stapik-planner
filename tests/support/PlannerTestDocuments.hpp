@@ -20,8 +20,8 @@ namespace planner::test
         auto document = PlannerDocument::createDefault();
         document.updatedAt = at(updatedAtSeconds);
         document.activities = {
-            Activity{ .name = "Gym", .difficulty = Difficulty::HARD },
-            Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT }
+            Activity{ .id = "gym", .name = "Gym", .difficulty = Difficulty::HARD },
+            Activity{ .id = "reading", .name = "Reading", .difficulty = Difficulty::LIGHT }
         };
         document.weekPlan[0].slots[0] = document.activities[0];
         document.weekPlan[0].slots[2] = document.activities[1];

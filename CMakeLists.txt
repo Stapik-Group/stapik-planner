@@ -26,17 +26,17 @@ FetchContent_MakeAvailable(stapikcommon)
 
 add_library(stapikplannercore STATIC
         src/core/model/PlannerDocument.cpp
+        src/core/model/PlannerModel.cpp
         src/infrastructure/storage/PlannerStorage.cpp
+        src/infrastructure/storage/PlannerSyncCoordinator.cpp
 )
 
 target_include_directories(stapikplannercore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(stapikplannercore PUBLIC stapikcommon nlohmann_json::nlohmann_json)
+target_link_libraries(stapikplannercore PUBLIC stapikcommon PkgConfig::GTKMM CURL::libcurl nlohmann_json::nlohmann_json)
 stapik_enable_warnings(stapikplannercore)
 
 add_executable(stapikplanner
         src/app/PlannerAppInfo.cpp
-        src/core/model/PlannerModel.cpp
-        src/infrastructure/storage/PlannerSyncCoordinator.cpp
         src/infrastructure/network/CloudSchemaMigrationGuard.cpp
         src/ui/action/MenuActionHandler.cpp
         src/ui/dialog/ActivityDialog.cpp

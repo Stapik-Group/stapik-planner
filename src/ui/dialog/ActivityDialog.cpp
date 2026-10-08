@@ -94,5 +94,5 @@ std::optional<Activity> ActivityDialog::getResult() const
     if (name.empty())
         return std::nullopt;
 
-    return Activity{name, getSelectedDifficulty()};
+    return Activity{ .name = name, .difficulty = getSelectedDifficulty() };
 }
