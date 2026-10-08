@@ -13,19 +13,12 @@
 namespace
 {
     using planner::test::at;
+    using planner::test::cloudDocumentOf;
     using planner::test::makeSampleDocument;
     using stapik::sync::SyncCoordinator;
     using stapik::sync::SyncEnvelope;
     using stapik::sync::SyncState;
     using stapik::test::FakeCloudStorage;
-
-    CloudDocument cloudDocumentOf(const PlannerDocument& document, const int serverSeconds)
-    {
-        return CloudDocument{
-            .content = SyncEnvelope{ .lastUpdate = document.lastUpdate(), .payload = document.toJson() }.toJson(),
-            .updatedAt = at(serverSeconds)
-        };
-    }
 
     class PlannerSyncCompatibilityTest : public testing::Test
     {

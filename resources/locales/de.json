@@ -55,6 +55,9 @@
   "dialog.connect.key.placeholder": "API-Schlüssel eingeben...",
 
 
+  "cloud.conflict.header": "Cloud-Version beibehalten",
+  "cloud.conflict.secondary": "Ein anderes Gerät hat eine neuere Version des Planers gespeichert. Ihre letzten Änderungen wurden dadurch ersetzt.",
+
   "button.ok": "OK",
   "button.cancel": "Abbrechen",
   "dialog.button.cancel": "Abbrechen"

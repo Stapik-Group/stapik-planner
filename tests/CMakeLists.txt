@@ -13,6 +13,7 @@ include(GoogleTest)
 add_executable(stapikplanner_tests
         core/PlannerDocumentTest.cpp
         core/PlannerModelTest.cpp
+        core/PlannerModelCloudTest.cpp
         infrastructure/PlannerStorageTest.cpp
         infrastructure/PlannerSyncCompatibilityTest.cpp
 )

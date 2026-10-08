@@ -55,6 +55,9 @@
   "dialog.connect.key.placeholder": "Wpisz klucz API...",
 
 
+  "cloud.conflict.header": "Zachowano wersję z chmury",
+  "cloud.conflict.secondary": "Inne urządzenie zapisało nowszą wersję planera. Twoje ostatnie zmiany zostały nią zastąpione.",
+
   "button.ok": "OK",
   "button.cancel": "Anuluj",
   "dialog.button.cancel": "Anuluj"

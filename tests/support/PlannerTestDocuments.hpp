@@ -2,6 +2,9 @@
 
 #include "core/model/PlannerDocument.hpp"
 
+#include "stapik/cloud/ICloudStorage.hpp"
+#include "stapik/sync/SyncEnvelope.hpp"
+
 #include <chrono>
 
 namespace planner::test
@@ -27,5 +30,14 @@ namespace planner::test
         document.weekPlan[0].slots[2] = document.activities[1];
         document.weekPlan[4].slots[1] = document.activities[1];
         return document;
+    }
+
+    // The document as the cloud stores it: the sync envelope around the payload, with the server's own time.
+    inline CloudDocument cloudDocumentOf(const PlannerDocument& document, const int serverSeconds)
+    {
+        return CloudDocument{
+            .content = stapik::sync::SyncEnvelope{ .lastUpdate = document.lastUpdate(), .payload = document.toJson() }.toJson(),
+            .updatedAt = at(serverSeconds)
+        };
     }
 }

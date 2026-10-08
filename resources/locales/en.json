@@ -55,6 +55,9 @@
   "dialog.connect.key.placeholder": "Enter API key...",
 
 
+  "cloud.conflict.header": "Cloud version kept",
+  "cloud.conflict.secondary": "Another device saved a newer version of the planner. Your latest changes were replaced by it.",
+
   "button.ok": "OK",
   "button.cancel": "Cancel",
   "dialog.button.cancel": "Cancel"

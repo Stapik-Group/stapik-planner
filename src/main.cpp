@@ -6,7 +6,6 @@
 #include "stapik/app/SingleInstanceGuard.hpp"
 #include "stapik/storage/AppPaths.hpp"
 #include "stapik/theme/ThemeManager.hpp"
-#include "infrastructure/network/CloudSchemaMigrationGuard.hpp"
 #include "stapik/ui/style/AppStyleProvider.hpp"
 
 int main(const int argc, char *argv[])
@@ -16,8 +15,6 @@ int main(const int argc, char *argv[])
 
     if (const auto singleInstanceGuard = stapik::app::SingleInstanceGuard::acquire(appInfo.applicationId, appInfo.displayName); singleInstanceGuard == nullptr)
         return EXIT_SUCCESS;
-
-    CloudSchemaMigrationGuard::ensureCompatible();
 
     const auto app = Gtk::Application::create(appInfo.applicationId);
     AppStyleProvider styleProvider(AppPaths::resourcesDir());

@@ -28,7 +28,6 @@ add_library(stapikplannercore STATIC
         src/core/model/PlannerDocument.cpp
         src/core/model/PlannerModel.cpp
         src/infrastructure/storage/PlannerStorage.cpp
-        src/infrastructure/storage/PlannerSyncCoordinator.cpp
 )
 
 target_include_directories(stapikplannercore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -37,7 +36,6 @@ stapik_enable_warnings(stapikplannercore)
 
 add_executable(stapikplanner
         src/app/PlannerAppInfo.cpp
-        src/infrastructure/network/CloudSchemaMigrationGuard.cpp
         src/ui/action/MenuActionHandler.cpp
         src/ui/dialog/ActivityDialog.cpp
         src/ui/view/ActivityCatalogView.cpp

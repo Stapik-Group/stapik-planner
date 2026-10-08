@@ -1,13 +1,15 @@
 #include "PlannerModel.hpp"
 #include "../../infrastructure/storage/PlannerStorage.hpp"
-#include "../../infrastructure/storage/PlannerSyncCoordinator.hpp"
 
 #include "stapik/domain/IdGenerator.hpp"
 #include "stapik/log/Log.hpp"
 
-#include <chrono>
-#include <utility>
+#include <glib.h>
 #include <glibmm/main.h>
+
+#include <chrono>
+#include <thread>
+#include <utility>
 
 namespace
 {
@@ -53,11 +55,26 @@ namespace
 }
 
 PlannerModel::PlannerModel() :
-    m_storage(std::make_unique<PlannerStorage>()),
-    m_document(m_storage->load())
+    PlannerModel(std::make_unique<PlannerStorage>(), stapik::sync::defaultCloudSessionHooks(CLOUD_SLOT_KEY))
 {}
 
-PlannerModel::~PlannerModel() = default;
+PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions) :
+    m_storage(std::move(storage)),
+    m_document(m_storage->load()),
+    m_cloudSession(std::move(cloudHooks), syncOptions)
+{
+    m_cloudSession.signalStatusChanged().connect([this](const stapik::sync::SyncStatus status) { m_signalCloudStatusChanged.emit(status); });
+    m_cloudSession.signalOutcome().connect([this](const CloudOutcome& outcome) { onCloudOutcome(outcome); });
+
+    // A connection restored from the saved configuration is synchronized at start-up.
+    if (m_cloudSession.isConnected())
+        m_cloudSession.syncNow(m_document);
+}
+
+PlannerModel::~PlannerModel()
+{
+    m_deferredPush.disconnect();
+}
 
 const Settings& PlannerModel::settings() const
 {
@@ -159,27 +176,56 @@ void PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
     m_signalWeekPlanChanged.emit();
 }
 
-void PlannerModel::setCloudClient(std::unique_ptr<CloudStorageClient> client)
+bool PlannerModel::connectCloud(const CloudStorageConfig& config)
 {
-    m_cloudClient = std::move(client);
-    syncFromCloud();
+    return m_cloudSession.connectWith(config, m_document);
 }
 
-void PlannerModel::retrySync()
+void PlannerModel::syncCloud()
 {
-    syncFromCloud();
+    m_cloudSession.syncNow(m_document);
 }
 
-void PlannerModel::syncFromCloud()
+void PlannerModel::flushCloud(const std::chrono::milliseconds timeout)
 {
-    if (m_cloudClient == nullptr)
+    if (!m_cloudSession.hasPendingWork())
         return;
 
-    m_document = PlannerSyncCoordinator::resolveOnConnect(m_document, *m_cloudClient);
-    saveToDisk();
-    m_signalActivitiesChanged.emit();
-    m_signalSettingsChanged.emit();
-    m_signalWeekPlanChanged.emit();
+    // Waiting is over when the synchronization is done or cannot go on (offline, conflict, unreadable cloud copy).
+    bool settled = false;
+    auto outcomeConnection = m_cloudSession.signalOutcome().connect([&settled](const CloudOutcome& outcome)
+    {
+        settled = outcome.state != stapik::sync::SyncState::Synchronized;
+    });
+
+    m_cloudSession.flush();
+
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (!settled && m_cloudSession.hasPendingWork() && std::chrono::steady_clock::now() < deadline)
+    {
+        while (g_main_context_iteration(nullptr, FALSE))
+        {
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    outcomeConnection.disconnect();
+}
+
+bool PlannerModel::isCloudConnected() const
+{
+    return m_cloudSession.isConnected();
+}
+
+const std::optional<CloudStorageConfig>& PlannerModel::cloudConfig() const
+{
+    return m_cloudSession.config();
+}
+
+stapik::sync::SyncStatus PlannerModel::cloudStatus() const
+{
+    return m_cloudSession.status();
 }
 
 sigc::signal<void()>& PlannerModel::signalActivitiesChanged()
@@ -197,22 +243,75 @@ sigc::signal<void()>& PlannerModel::signalWeekPlanChanged()
     return m_signalWeekPlanChanged;
 }
 
+sigc::signal<void(stapik::sync::SyncStatus)>& PlannerModel::signalCloudStatusChanged()
+{
+    return m_signalCloudStatusChanged;
+}
+
+sigc::signal<void(const PlannerModel::CloudOutcome&)>& PlannerModel::signalCloudOutcome()
+{
+    return m_signalCloudOutcome;
+}
+
 void PlannerModel::persist()
 {
     m_document.updatedAt = std::chrono::system_clock::now();
-
-    if (m_cloudClient != nullptr)
-    {
-        g_message("[Cloud] Saving in cloud...");
-        m_document = PlannerSyncCoordinator::pushLocalChange(m_document, *m_cloudClient);
-        g_message("[Cloud] Saved in cloud.");
-    }
-
     saveToDisk();
+    m_cloudSession.pushChange(m_document);
 }
 
 void PlannerModel::saveToDisk()
 {
     if (!m_storage->save(m_document))
         stapik::log::warning("Cannot save the planner to {}", m_storage->filePath().string());
+}
+
+void PlannerModel::onCloudOutcome(const CloudOutcome& outcome)
+{
+    if (outcome.replacesLocal())
+        replaceWithCloudDocument(outcome);
+    else if (const auto baseline = outcome.document.lastKnownCloudUpdate(); baseline.has_value() && outcome.state == stapik::sync::SyncState::Synchronized)
+        m_document.cloudBaseline = baseline;
+
+    m_signalCloudOutcome.emit(outcome);
+}
+
+void PlannerModel::replaceWithCloudDocument(const CloudOutcome& outcome)
+{
+    const auto& cloudDocument = outcome.document;
+
+    // The synchronization runs in the background, so the planner may have been edited since it started.
+    // The scheduler drops that queued change when the cloud copy wins, which would lose the edit even
+    // when it is newer than the cloud copy, so the newer local edit is pushed again. A cloud copy
+    // without a known time (written by an earlier version) is always taken, and so is a copy that
+    // the scheduler accepted after losing the race twice, to avoid retrying forever.
+    const auto cloudBaseline = cloudDocument.lastKnownCloudUpdate();
+    const bool cloudTimeKnown = cloudDocument.lastUpdate() != PlannerDocument::TimePoint{};
+    const bool localIsNewer = m_document.lastUpdate() > cloudDocument.lastUpdate();
+    if (outcome.state == stapik::sync::SyncState::ServerWon && cloudBaseline.has_value() && cloudTimeKnown && localIsNewer)
+    {
+        m_document.cloudBaseline = cloudBaseline;
+        pushLocalEditAfterTheOutcomeIsHandled();
+        return;
+    }
+
+    m_document = cloudDocument;
+    saveToDisk();
+    m_signalActivitiesChanged.emit();
+    m_signalSettingsChanged.emit();
+    m_signalWeekPlanChanged.emit();
+}
+
+// The scheduler discards its queued change after it has announced the outcome, so a push requested
+// from the outcome handler would be discarded with it. It has to wait until the handling is over.
+void PlannerModel::pushLocalEditAfterTheOutcomeIsHandled()
+{
+    if (m_deferredPush.connected())
+        return;
+
+    m_deferredPush = Glib::signal_idle().connect([this]
+    {
+        m_cloudSession.pushChange(m_document);
+        return false;
+    });
 }

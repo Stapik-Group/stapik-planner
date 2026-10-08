@@ -1,19 +1,19 @@
 #include "MenuActionHandler.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
-#include "stapik/storage/CloudStorageConfigStorage.hpp"
-#include "stapik/cloud/CloudStorageClient.hpp"
-#include "stapik/cloud/CloudStorageException.hpp"
 #include "stapik/ui/dialog/AboutDialog.hpp"
 #include "stapik/ui/dialog/ConnectDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
-
-#include <tuple>
 
 MenuActionHandler::MenuActionHandler(Gtk::ApplicationWindow &window, PlannerModel& model) :
     m_window(window),
     m_model(model)
 {}
+
+MenuActionHandler::~MenuActionHandler()
+{
+    m_outcomeConnection.disconnect();
+}
 
 void MenuActionHandler::registerActions()
 {
@@ -21,67 +21,67 @@ void MenuActionHandler::registerActions()
     m_window.add_action("about", sigc::mem_fun(*this, &MenuActionHandler::onActionAbout));
     m_window.add_action("connect", sigc::mem_fun(*this, &MenuActionHandler::onActionConnect));
     m_window.add_action("sync", sigc::mem_fun(*this, &MenuActionHandler::onActionSync));
+
+    m_outcomeConnection = m_model.signalCloudOutcome().connect(sigc::mem_fun(*this, &MenuActionHandler::showConnectFeedback));
 }
 
-void MenuActionHandler::onActionQuit() const
+// Closing the window, rather than quitting the application, lets the window push the pending changes first.
+void MenuActionHandler::onActionQuit()
 {
-    m_window.get_application()->quit();
+    m_window.close();
 }
 
-void MenuActionHandler::onActionAbout() const
+void MenuActionHandler::onActionAbout()
 {
     showAboutDialog(m_window);
 }
 
-void MenuActionHandler::onActionConnect() const
+void MenuActionHandler::onActionConnect()
 {
-    auto* dialog = new ConnectDialog(m_window);
-
-    if (const auto config = CloudStorageConfigStorage::load("stapikplanner"); config.has_value())
-        dialog->prefillConfig(config.value());
-
-    dialog->signal_response().connect([this, dialog](const int responseId)
-    {
-        if (responseId == Gtk::ResponseType::OK)
-        {
-            if (const auto result = dialog->getResult(); result.has_value())
-                handleConnectResult(result.value());
-        }
-        dialog->hide();
-    });
-
-    dialog->signal_hide().connect([dialog] { delete dialog; });
-    dialog->show();
+    showConnectDialog(m_window, m_model.cloudConfig(), [this](const CloudStorageConfig& config) { handleConfirmedConfig(config); });
 }
 
-void MenuActionHandler::handleConnectResult(const CloudStorageConfig& config) const
+void MenuActionHandler::onActionSync()
 {
-    CloudStorageConfigStorage::save(config, "stapikplanner");
-    applyCloudConfig(config);
+    m_model.syncCloud();
 }
 
-void MenuActionHandler::applyCloudConfig(const CloudStorageConfig& config) const
+void MenuActionHandler::handleConfirmedConfig(const CloudStorageConfig& config)
 {
-    const auto& loc = LocaleManager::instance();
+    const auto& localeManager = LocaleManager::instance();
 
-    try
+    if (!m_model.connectCloud(config))
     {
-        auto client = std::make_unique<CloudStorageClient>(config, PLANNER_FILENAME);
-        std::ignore = client->loadDocument();
-
-        m_model.setCloudClient(std::move(client));
-
-        g_message("[Cloud] Connected: %s", config.apiUrl.c_str());
-        showMessageDialog(m_window, loc.translate("cloud.connected"), loc.translate("cloud.connected.secondary"), Gtk::MessageType::INFO);
+        showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), "", Gtk::MessageType::ERROR);
+        return;
     }
-    catch (const CloudStorageException& e)
-    {
-        g_warning("[Cloud] Cloud connection error: %s", e.what());
-        showMessageDialog(m_window, loc.translate("cloud.failed.header"), e.what(), Gtk::MessageType::ERROR);
-    }
+
+    // The connection is checked by the first synchronization, which runs in the background.
+    m_connectFeedbackPending = true;
 }
 
-void MenuActionHandler::onActionSync() const
+void MenuActionHandler::showConnectFeedback(const PlannerModel::CloudOutcome& outcome)
 {
-    m_model.retrySync();
+    if (!m_connectFeedbackPending)
+        return;
+
+    m_connectFeedbackPending = false;
+
+    const auto& localeManager = LocaleManager::instance();
+    using stapik::sync::SyncState;
+
+    switch (outcome.state)
+    {
+        case SyncState::Synchronized:
+        case SyncState::ServerWon:
+            showMessageDialog(m_window, localeManager.translate("cloud.connected"), localeManager.translate("cloud.connected.secondary"), Gtk::MessageType::INFO);
+            break;
+        case SyncState::OfflineKeptLocal:
+        case SyncState::RemoteUnreadable:
+            showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), outcome.message, Gtk::MessageType::ERROR);
+            break;
+        case SyncState::LostRaceAcceptedServer:
+            // The window explains this one to the user.
+            break;
+    }
 }

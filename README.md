@@ -104,13 +104,13 @@ The app supports synchronization via [Stapik Cloud](https://github.com/Stapik-Gr
 
 Once connected, the app compares the local file and the cloud copy using a `lastUpdate` timestamp and keeps whichever one is newer, overwriting the other **as a whole document**. There is no field-level or entry-level merging — if both copies changed since the last sync, the older one is fully replaced.
 
-Data is saved locally after every change, and the app also attempts to push it to the cloud right away. Writes are optimistic-concurrency-checked: if another device saved a newer version in the meantime, the write is rejected, the server's copy is fetched, and the app retries once against that copy before falling back to accepting the server's version. If the cloud is unreachable at that moment, the change stays saved locally and the app quietly retries on the next save — no data is lost, but the cloud copy will lag behind until the next successful write. You can also trigger a sync manually from **File → Sync**.
+Data is saved locally after every change. The upload to the cloud runs in the background a moment after the change, so the window never waits for the network, and a status line at the bottom of the window shows whether the planner is up to date, syncing, offline or in conflict. Writes are checked for conflicts: if another device saved a newer version in the meantime, the write is rejected, the server's copy is fetched, and the app retries once against that copy before falling back to accepting the server's version; in that case a message tells you that your latest changes were replaced. If the cloud is unreachable, the change stays saved locally and the app keeps retrying in the background with growing pauses; you can also trigger a sync manually from **File → Sync**. When you close the window, pending changes are pushed first, waiting a few seconds at most.
 
 **Caution for multi-device use:** since conflict resolution is whole-document, editing the schedule offline on two different machines before either one reconnects can still cause one set of changes to be discarded. Stapik Cloud keeps a version history of every write, so a discarded document isn't gone permanently, but the app itself doesn't yet expose a way to browse or restore old versions. If you use the app on more than one device, make sure to sync (or at least go online) after each editing session to avoid overwriting your own changes.
 
 The app talks to the Stapik Cloud `/documents/{slotKey}` endpoint (slot key `planner.json`), authenticated via an `x-api-key` header. See the [Stapik Cloud API reference](https://github.com/Stapik-Group/stapik-cloud) for details.
 
-If you're upgrading from an app version that used the older, incompatible cloud protocol, the app detects this automatically on first launch and clears the saved connection — you'll need to reconnect once via **File → Connect**.
+A connection saved by a much older version that used an incompatible cloud protocol is no longer cleared automatically. If the status line shows an error after upgrading from such a version, reconnect once via **File → Connect**.
 
 ## Themes
 
