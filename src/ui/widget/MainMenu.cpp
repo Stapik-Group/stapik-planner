@@ -1,6 +1,6 @@
 #include "MainMenu.hpp"
 
-#include "../../../cmake-build-release/_deps/stapikcommon-src/src/stapik/theme/ThemeManager.hpp"
+#include "stapik/theme/ThemeManager.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
@@ -53,7 +53,7 @@ void MainMenu::buildModel()
 
     const auto menuSlots = Gio::Menu::create();
     for (int count = MIN_SLOT_OPTION; count <= MAX_SLOT_OPTION; ++count)
-        menuSlots->append(std::to_string(count), "win.setSlotCount::" + std::to_string(count));
+        menuSlots->append(std::to_string(count), std::format("win.setSlotCount::{}", count));
 
     const auto menuSettings = Gio::Menu::create();
     menuSettings->append_submenu(loc.translate("menu.settings.language"), menuLanguage);

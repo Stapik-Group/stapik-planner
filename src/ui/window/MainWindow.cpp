@@ -1,6 +1,6 @@
 #include "MainWindow.hpp"
 
-#include "../../../cmake-build-release/_deps/stapikcommon-src/src/stapik/storage/CloudStorageConfigStorage.hpp"
+#include "stapik/storage/CloudStorageConfigStorage.hpp"
 
 MainWindow::MainWindow() :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
