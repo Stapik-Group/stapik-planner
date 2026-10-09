@@ -24,7 +24,6 @@ private:
     bool m_connectFeedbackPending = false;
 
     void onActionQuit();
-    void onActionAbout();
     void onActionConnect();
     void onActionSync();
 

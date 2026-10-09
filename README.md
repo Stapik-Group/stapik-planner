@@ -11,7 +11,7 @@ A desktop weekly activity planner for Linux, written in C++20 using GTK4/gtkmm. 
 - **Daily load tracking** - a load bar per day shows total workload as a percentage; once a day reaches 100%, its remaining empty slots are locked to prevent overloading
 - **Cloud sync** - save and load data via [Stapik Cloud](https://github.com/Stapik-Group/stapik-cloud), with optimistic-concurrency conflict resolution and full version history
 - **Multilingual UI** - Polish, English and German interface with instant switching
-- **Three themes** - Classic, Modern and Classic Pink, switchable live from the menu, matching Stapik Calendar
+- **Five themes** - Classic, Classic Pink, Modern, Dark and Neoclassic, switchable live from the menu; the themes and the common parts of the look are shared with the other Stapik applications
 - **Auto-save** - schedule and catalog data saved locally after every change
 - **Retro aesthetic** — classic look with raised buttons, blue header bar and grey cells by default, consistent with Stapik Calendar
 
@@ -96,7 +96,7 @@ rm ~/.local/share/applications/stapikplanner.desktop
 rm ~/.local/share/icons/hicolor/256x256/apps/stapikplanner.png
 ```
 
-Either way, your schedule data, cloud config and language preference remain at `~/.local/share/stapikplanner/` — see [Data Storage](#data-storage) below if you want to remove those too.
+Either way, your schedule data and cloud config remain at `~/.local/share/stapikplanner/`, and your language and theme preferences at `~/.config/stapikplanner/` — see [Data Storage](#data-storage) below if you want to remove those too.
 
 ## Cloud Sync
 
@@ -114,7 +114,7 @@ A connection saved by a much older version that used an incompatible cloud proto
 
 ## Themes
 
-Switch between three themes from **Settings → Theme**: Classic (the original retro look), Modern (flat, minimal), and Classic Pink. The choice applies instantly and is remembered between launches.
+Switch between five themes from **Settings → Theme**: Classic (the original retro look), Classic Pink, Modern (flat, minimal), Dark and Neoclassic. The choice applies instantly and is remembered between launches. The themes come from stapik-common; the planner adds its own widgets on top of them in `resources/themes/<theme>.css`, one file per theme.
 
 ## Slots per Day
 
@@ -122,7 +122,7 @@ The number of activity slots per day (3–6) can be changed from **Settings → 
 
 ## Data Storage
 
-Schedule, catalog and settings are stored locally at `~/.local/share/stapikplanner/planner.json` (`$XDG_DATA_HOME/stapikplanner/planner.json` when `XDG_DATA_HOME` is set). The file is versioned with a `schemaVersion` and carries the `lastUpdate` timestamp used for cloud sync; files written by earlier versions are migrated when they are loaded. Every save keeps the previous file as `planner.json.bak`. A file that cannot be read is never silently overwritten: an unreadable one is moved aside as `planner.json.corrupt-<time>`, and one written by a newer version of the app as `planner.json.newer-version-<time>`. Cloud config at `~/.local/share/stapikplanner/config.json`. Language preference at `~/.local/share/stapikplanner/locale.txt`. Theme preference at `~/.local/share/stapikplanner/theme.txt`.
+Schedule, catalog and settings are stored locally at `~/.local/share/stapikplanner/planner.json` (`$XDG_DATA_HOME/stapikplanner/planner.json` when `XDG_DATA_HOME` is set). The file is versioned with a `schemaVersion` and carries the `lastUpdate` timestamp used for cloud sync; files written by earlier versions are migrated when they are loaded. Every save keeps the previous file as `planner.json.bak`. A file that cannot be read is never silently overwritten: an unreadable one is moved aside as `planner.json.corrupt-<time>`, and one written by a newer version of the app as `planner.json.newer-version-<time>`. Cloud config at `~/.local/share/stapikplanner/config.json`. Language and theme preferences at `~/.config/stapikplanner/settings.json` (`$XDG_CONFIG_HOME/stapikplanner/settings.json`); the `locale.txt` and `theme.txt` files of earlier versions are imported on the first launch.
 
 ## Themes
 
@@ -138,7 +138,7 @@ Schedule, catalog and settings are stored locally at `~/.local/share/stapikplann
 - [x] Multilingual UI (PL/EN/DE)
 - [x] `.deb` package for easier distribution
 - [x] In-app UI for changing the number of slots per day
-- [x] Multiple themes (Classic / Modern / Classic Pink)
+- [x] Multiple themes (Classic / Classic Pink / Modern / Dark / Neoclassic)
 - [ ] Copy a day's plan to another day
 - [ ] Weekly load summary / overview
 - [ ] Flatpak package

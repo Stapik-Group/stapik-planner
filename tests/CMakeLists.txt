@@ -16,6 +16,7 @@ add_executable(stapikplanner_tests
         core/PlannerModelCloudTest.cpp
         infrastructure/PlannerStorageTest.cpp
         infrastructure/PlannerSyncCompatibilityTest.cpp
+        resources/PlannerResourcesTest.cpp
 )
 
 target_link_libraries(stapikplanner_tests PRIVATE
@@ -27,6 +28,11 @@ target_link_libraries(stapikplanner_tests PRIVATE
 target_include_directories(stapikplanner_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${stapikcommon_SOURCE_DIR}/tests
+)
+
+target_compile_definitions(stapikplanner_tests PRIVATE
+        STAPIK_PLANNER_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        STAPIK_COMMON_RESOURCES_DIR="${STAPIK_COMMON_RESOURCES_DIR}"
 )
 
 stapik_enable_warnings(stapikplanner_tests)

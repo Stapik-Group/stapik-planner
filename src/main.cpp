@@ -6,6 +6,7 @@
 #include "stapik/app/SingleInstanceGuard.hpp"
 #include "stapik/storage/AppPaths.hpp"
 #include "stapik/theme/ThemeManager.hpp"
+#include "stapik/ui/menu/StandardMenu.hpp"
 #include "stapik/ui/style/AppStyleProvider.hpp"
 
 int main(const int argc, char *argv[])
@@ -17,14 +18,16 @@ int main(const int argc, char *argv[])
         return EXIT_SUCCESS;
 
     const auto app = Gtk::Application::create(appInfo.applicationId);
-    AppStyleProvider styleProvider(AppPaths::resourcesDir());
+    auto styleProvider = AppStyleProvider::withCommonThemes(AppPaths::resourcesDir());
 
     app->signal_activate().connect([&]
     {
-        styleProvider.apply(ThemeManager::instance().getTheme());
-        ThemeManager::instance().signalThemeChanged().connect([&styleProvider] { styleProvider.apply(ThemeManager::instance().getTheme()); });
+        StandardMenu::installShortcuts(*app);
 
-        auto* window = new MainWindow();
+        styleProvider.apply(ThemeManager::instance().themeId());
+        ThemeManager::instance().signalThemeChanged().connect([&styleProvider] { styleProvider.apply(ThemeManager::instance().themeId()); });
+
+        auto* window = new MainWindow(styleProvider.themes());
         app->add_window(*window);
         window->show();
     });

@@ -3,29 +3,39 @@
 #include "../action/MenuActionHandler.hpp"
 #include "../../core/model/PlannerModel.hpp"
 
-#include <gtkmm/applicationwindow.h>
+#include "stapik/theme/ThemeRegistry.hpp"
+#include "stapik/ui/menu/RadioAction.hpp"
+#include "stapik/ui/menu/StandardMenu.hpp"
+
 #include <giomm/menu.h>
+#include <gtkmm/applicationwindow.h>
 #include <gtkmm/popovermenubar.h>
+#include <sigc++/connection.h>
+
+#include <memory>
 
 class MainMenu
 {
 public:
-    explicit MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model);
-    ~MainMenu() = default;
+    explicit MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const stapik::theme::ThemeRegistry& themes);
+    ~MainMenu();
+
+    MainMenu(const MainMenu&) = delete;
+    MainMenu& operator=(const MainMenu&) = delete;
+
     Gtk::PopoverMenuBar& getMenuBar();
 private:
-    Gtk::ApplicationWindow& m_window;
-    PlannerModel& m_model;
-    Glib::RefPtr<Gio::Menu> m_menuModel;
-    Gtk::PopoverMenuBar m_menuBar;
-
-    MenuActionHandler m_actionHandler;
-
     static constexpr int MIN_SLOT_OPTION = 3;
     static constexpr int MAX_SLOT_OPTION = 6;
 
-    void buildModel();
-    void initLanguageAction() const;
-    void initThemeAction() const;
-    void initSlotCountAction() const;
+    Gtk::ApplicationWindow& m_window;
+    PlannerModel& m_model;
+    MenuActionHandler m_actionHandler;
+    StandardMenu m_standardMenu;
+    std::unique_ptr<stapik::ui::RadioAction<int>> m_slotCountAction;
+    sigc::connection m_settingsConnection;
+
+    void initSlotCountAction();
+    void buildSlotCountMenu(Gio::Menu& settingsMenu) const;
+    void onSlotCountSelected(int slotCount);
 };

@@ -6,6 +6,7 @@
 #include "../widget/MainMenu.hpp"
 
 #include "stapik/sync/SyncStatus.hpp"
+#include "stapik/theme/ThemeRegistry.hpp"
 #include "stapik/ui/widget/StatusIndicator.hpp"
 
 #include <gtkmm/applicationwindow.h>
@@ -16,7 +17,7 @@
 class MainWindow : public Gtk::ApplicationWindow
 {
 public:
-    explicit MainWindow();
+    explicit MainWindow(const stapik::theme::ThemeRegistry& themes);
     ~MainWindow() override = default;
 private:
     static constexpr int DEFAULT_WIDTH = 1280;

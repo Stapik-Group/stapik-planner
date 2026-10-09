@@ -3,10 +3,10 @@
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
-MainWindow::MainWindow() :
+MainWindow::MainWindow(const stapik::theme::ThemeRegistry& themes) :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
     m_contentBox(Gtk::Orientation::VERTICAL, 0),
-    m_mainMenu(*this, m_model),
+    m_mainMenu(*this, m_model, themes),
     m_activityCatalogView(m_model),
     m_scheduleView(m_model)
 {

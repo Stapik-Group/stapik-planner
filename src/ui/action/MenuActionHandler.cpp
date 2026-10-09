@@ -1,7 +1,6 @@
 #include "MenuActionHandler.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
-#include "stapik/ui/dialog/AboutDialog.hpp"
 #include "stapik/ui/dialog/ConnectDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
@@ -18,7 +17,6 @@ MenuActionHandler::~MenuActionHandler()
 void MenuActionHandler::registerActions()
 {
     m_window.add_action("quit", sigc::mem_fun(*this, &MenuActionHandler::onActionQuit));
-    m_window.add_action("about", sigc::mem_fun(*this, &MenuActionHandler::onActionAbout));
     m_window.add_action("connect", sigc::mem_fun(*this, &MenuActionHandler::onActionConnect));
     m_window.add_action("sync", sigc::mem_fun(*this, &MenuActionHandler::onActionSync));
 
@@ -29,11 +27,6 @@ void MenuActionHandler::registerActions()
 void MenuActionHandler::onActionQuit()
 {
     m_window.close();
-}
-
-void MenuActionHandler::onActionAbout()
-{
-    showAboutDialog(m_window);
 }
 
 void MenuActionHandler::onActionConnect()
