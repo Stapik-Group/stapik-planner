@@ -1,0 +1,123 @@
+name: Release
+
+# Publishing a release with a tag vX.Y.Z builds the Debian package and the Windows folder
+# and uploads both to the assets of that release. Nothing else starts this workflow.
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name }}
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  check:
+    name: Check the tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out the tagged sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      # The packages are named after the version in CMakeLists.txt, so the tag has to say the same.
+      - name: Compare the tag with the version of the project
+        id: version
+        run: |
+          if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::The tag '$TAG' is not of the form vX.Y.Z"
+            exit 1
+          fi
+          tag_version="${BASH_REMATCH[1]}"
+
+          project_version="$(sed -nE 's/^project\([^ ]+ VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt | head -n 1)"
+          if [[ "$tag_version" != "$project_version" ]]; then
+            echo "::error::The tag is $tag_version, but CMakeLists.txt has version ${project_version:-unknown}"
+            exit 1
+          fi
+
+          echo "version=$tag_version" >> "$GITHUB_OUTPUT"
+
+  debian:
+    name: Debian package
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the tagged sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install the dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtkmm-4.0-dev libcurl4-openssl-dev dpkg-dev ninja-build
+
+      - name: Install CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: latest
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Create the package
+        working-directory: build
+        run: cpack -G DEB
+
+      - name: Upload the package to the release
+        run: gh release upload "$TAG" build/stapikplanner_*.deb --clobber
+
+  windows:
+    name: Windows folder
+    needs: check
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out the tagged sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gtkmm-4.0
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-hicolor-icon-theme
+
+      # The folder holds the executable with every DLL, the GTK data and the resources, so that it runs
+      # on a PC without MSYS2. The executable alone would not start.
+      - name: Build the self-contained folder
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target stapikplanner_windows_bundle
+
+      - name: Zip the folder
+        shell: pwsh
+        run: Compress-Archive -Path build/stapikplanner-windows -DestinationPath "stapikplanner-${{ needs.check.outputs.version }}-windows-x64.zip"
+
+      - name: Upload the archive to the release
+        shell: pwsh
+        run: gh release upload "$env:TAG" "stapikplanner-${{ needs.check.outputs.version }}-windows-x64.zip" --clobber
