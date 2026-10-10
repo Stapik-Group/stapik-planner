@@ -50,6 +50,8 @@ cmake --build cmake-build-tests
 ctest --test-dir cmake-build-tests --output-on-failure
 ```
 
+The `resources/` folder is copied next to the executable in the build directory; files that were removed from the sources stay there until the build directory is cleaned.
+
 ## Installation
 
 ### Option 1 — Download prebuilt `.deb` (recommended)
@@ -70,15 +72,21 @@ sudo dpkg -i stapikplanner_*.deb
 sudo apt install -f
 ```
 
-Either option installs the app to `/usr/lib/stapikplanner/`, with a launcher at `/usr/bin/stapikplanner`, and it appears in the desktop environment's application menu.
+Either option installs the app to `/opt/stapikplanner/`, with a launcher at `/usr/bin/stapikplanner`, and it appears in the desktop environment's application menu. Upgrading from a version that installed to `/usr/lib/stapikplanner/` removes the old files.
 
 ### Option 3 — per-user install (no sudo required)
 
+The launcher contains the install location, so both prefixes are given when configuring:
+
 ```bash
-cmake --install cmake-build-release --prefix "$HOME/.local"
+cmake -B cmake-build-release -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX="$HOME/.local/opt/stapikplanner" \
+      -DSTAPIK_APP_SYSTEM_PREFIX="$HOME/.local"
+cmake --build cmake-build-release
+cmake --install cmake-build-release
 ```
 
-Installs to `~/.local/lib/stapikplanner/`, with a launcher at `~/.local/bin/stapikplanner`. Make sure `~/.local/bin` is in your `PATH`.
+Installs the app to `~/.local/opt/stapikplanner/`, with a launcher at `~/.local/bin/stapikplanner`. Make sure `~/.local/bin` is in your `PATH`.
 
 ## Uninstalling
 
@@ -91,9 +99,9 @@ sudo dpkg -r stapikplanner
 ### If installed per-user
 
 ```bash
-rm -rf ~/.local/lib/stapikplanner
+rm -rf ~/.local/opt/stapikplanner
 rm ~/.local/bin/stapikplanner
-rm ~/.local/share/applications/stapikplanner.desktop
+rm ~/.local/share/applications/pl.stapik.planner.desktop
 rm ~/.local/share/icons/hicolor/256x256/apps/stapikplanner.png
 ```
 
