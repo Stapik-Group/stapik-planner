@@ -1,11 +1,12 @@
 #include "MainWindow.hpp"
 
-#include "../../../cmake-build-release/_deps/stapikcommon-src/src/stapik/storage/CloudStorageConfigStorage.hpp"
+#include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/DialogUtils.hpp"
 
-MainWindow::MainWindow() :
+MainWindow::MainWindow(const stapik::theme::ThemeRegistry& themes) :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
     m_contentBox(Gtk::Orientation::VERTICAL, 0),
-    m_mainMenu(*this, m_model),
+    m_mainMenu(*this, m_model, themes),
     m_activityCatalogView(m_model),
     m_scheduleView(m_model)
 {
@@ -32,12 +33,42 @@ void MainWindow::initLayout()
 
     m_mainBox.append(m_mainMenu.getMenuBar());
     m_mainBox.append(m_contentBox);
+
+    m_syncStatus.set_margin(4);
+    m_syncStatus.set_halign(Gtk::Align::END);
+    m_mainBox.append(m_syncStatus);
 }
 
 void MainWindow::initCloud()
 {
-    const auto config = CloudStorageConfigStorage::load("stapikplanner");
-    if (!config.has_value())
+    // The indicator is only meaningful once the planner is connected to the cloud.
+    m_syncStatus.set_visible(m_model.isCloudConnected());
+    m_syncStatus.setStatus(m_model.cloudStatus());
+
+    m_model.signalCloudStatusChanged().connect(sigc::mem_fun(*this, &MainWindow::onCloudStatusChanged));
+    m_model.signalCloudOutcome().connect(sigc::mem_fun(*this, &MainWindow::onCloudOutcome));
+    signal_close_request().connect(sigc::mem_fun(*this, &MainWindow::onCloseRequest), false);
+}
+
+// The changes are pushed in the background after a short delay, so they are sent now,
+// before the window and with it the application goes away.
+bool MainWindow::onCloseRequest()
+{
+    m_model.flushCloud();
+    return false;
+}
+
+void MainWindow::onCloudStatusChanged(const stapik::sync::SyncStatus status)
+{
+    m_syncStatus.set_visible(true);
+    m_syncStatus.setStatus(status);
+}
+
+void MainWindow::onCloudOutcome(const PlannerModel::CloudOutcome& outcome)
+{
+    if (outcome.state != stapik::sync::SyncState::LostRaceAcceptedServer)
         return;
-    m_model.setCloudClient(std::make_unique<CloudStorageClient>(config.value(), PLANNER_FILENAME));
+
+    const auto& localeManager = LocaleManager::instance();
+    showMessageDialog(*this, localeManager.translate("cloud.conflict.header"), localeManager.translate("cloud.conflict.secondary"), Gtk::MessageType::WARNING);
 }

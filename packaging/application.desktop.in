@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=@STAPIK_APP_DISPLAY_NAME@
+Comment=Oldschool week planner
+Exec=@STAPIK_APP_NAME@
+Icon=@STAPIK_APP_ICON_NAME@
+Terminal=false
+Categories=@STAPIK_APP_CATEGORIES@
+StartupWMClass=@STAPIK_APP_APPLICATION_ID@

@@ -12,8 +12,11 @@ enum class Difficulty
 
 struct Activity
 {
+    std::string id{};
     std::string name;
     Difficulty difficulty;
+
+    [[nodiscard]] bool operator==(const Activity&) const = default;
 
     static int difficultyLoad(const Difficulty difficulty)
     {

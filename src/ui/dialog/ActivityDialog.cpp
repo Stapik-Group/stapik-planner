@@ -24,6 +24,8 @@ ActivityDialog::ActivityDialog(Window &parent, const Activity &existing) :
 
 void ActivityDialog::initLayout()
 {
+    add_css_class("activity-dialog");
+
     const auto &loc = LocaleManager::instance();
 
     m_nameLabel.set_text(loc.translate("dialog.activity.name.label"));
@@ -94,5 +96,5 @@ std::optional<Activity> ActivityDialog::getResult() const
     if (name.empty())
         return std::nullopt;
 
-    return Activity{name, getSelectedDifficulty()};
+    return Activity{ .name = name, .difficulty = getSelectedDifficulty() };
 }

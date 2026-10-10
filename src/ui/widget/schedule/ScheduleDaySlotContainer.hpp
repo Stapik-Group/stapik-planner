@@ -32,5 +32,6 @@ private:
     sigc::connection m_localeConnection;
 
     void initLayout();
-    void refreshModel(const std::vector<Activity>& activities);
+    void refreshModel(const std::optional<Activity>& selected);
+    void selectActivity(const std::optional<Activity>& activity);
 };

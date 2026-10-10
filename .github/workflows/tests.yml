@@ -1,0 +1,44 @@
+name: Tests
+
+# Only a pull request that brings develop into main or master is tested.
+# Pushes to any branch and merges into main or master start nothing.
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Unit tests
+    if: github.head_ref == 'develop'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the sources
+        uses: actions/checkout@v4
+
+      - name: Install the dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtkmm-4.0-dev libcurl4-openssl-dev ninja-build
+
+      - name: Install CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: latest
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSTAPIK_PLANNER_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run the tests
+        run: ctest --test-dir build --output-on-failure

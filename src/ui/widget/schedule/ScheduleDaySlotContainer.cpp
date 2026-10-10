@@ -16,7 +16,7 @@ void ScheduleDaySlotContainer::initLayout()
     m_dropDown.set_selected(0);
 
     m_selectionConnection = m_dropDown.property_selected().signal_changed().connect([this] { m_signalChanged.emit(); });
-    m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(m_activities); });
+    m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(getSelected()); });
 
     set_margin(2);
     append(m_dropDown);
@@ -24,61 +24,50 @@ void ScheduleDaySlotContainer::initLayout()
 
 void ScheduleDaySlotContainer::setActivities(const Activities& activities)
 {
+    // The selection is read against the previous list, before it is replaced.
+    const auto selected = getSelected();
     m_activities = activities;
-    refreshModel(activities);
+    refreshModel(selected);
 }
 
-void ScheduleDaySlotContainer::refreshModel(const std::vector<Activity>& activities)
+void ScheduleDaySlotContainer::refreshModel(const std::optional<Activity>& selected)
 {
-    const auto selected = getSelected();
     m_selectionConnection.block();
 
     while (m_list_model->get_n_items() > 0)
         m_list_model->remove(0);
 
     m_list_model->append(LocaleManager::instance().translate("schedule.slot.empty"));
-    for (const auto&[name, difficulty] : activities)
-        m_list_model->append(name);
+    for (const auto& activity : m_activities)
+        m_list_model->append(activity.name);
 
-    if (selected.has_value())
-    {
-        for (guint i = 0; i < static_cast<guint>(activities.size()); ++i)
-        {
-            if (activities[i].name == selected->name)
-            {
-                m_dropDown.set_selected(i + 1);
-                m_selectionConnection.unblock();
-                return;
-            }
-        }
-    }
-
-    m_dropDown.set_selected(0);
+    selectActivity(selected);
     m_selectionConnection.unblock();
 }
 
 void ScheduleDaySlotContainer::setSelected(const std::optional<Activity>& activity)
 {
     m_selectionConnection.block();
-    if (!activity.has_value())
-    {
-        m_dropDown.set_selected(0);
-        m_selectionConnection.unblock();
-        return;
-    }
+    selectActivity(activity);
+    m_selectionConnection.unblock();
+}
 
-    for (guint i = 0; i < static_cast<guint>(m_activities.size()); ++i)
+// Selects the entry of the activity with the same id, or the empty entry when it is not in the list.
+void ScheduleDaySlotContainer::selectActivity(const std::optional<Activity>& activity)
+{
+    if (activity.has_value())
     {
-        if (m_activities[i].name == activity->name)
+        for (guint position = 0; position < static_cast<guint>(m_activities.size()); ++position)
         {
-            m_dropDown.set_selected(i + 1);
-            m_selectionConnection.unblock();
-            return;
+            if (m_activities[position].id == activity->id)
+            {
+                m_dropDown.set_selected(position + 1);
+                return;
+            }
         }
     }
 
     m_dropDown.set_selected(0);
-    m_selectionConnection.unblock();
 }
 
 std::optional<Activity> ScheduleDaySlotContainer::getSelected() const
