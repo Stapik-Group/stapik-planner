@@ -193,3 +193,184 @@ TEST_F(PlannerModelTest, ActivityIdsSurviveARestart)
     EXPECT_EQ(reloaded.activities()[0].id, id);
     EXPECT_EQ(reloaded.weekPlan()[0].slots[0]->id, id);
 }
+
+TEST_F(PlannerModelTest, AddingAnActivityCanBeUndoneAndRedoneWithTheSameId)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto id = m_model->activities()[0].id;
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_TRUE(m_model->activities().empty());
+
+    EXPECT_TRUE(m_model->undoStack().redo());
+    ASSERT_EQ(m_model->activities().size(), 1U);
+    EXPECT_EQ(m_model->activities()[0].id, id);
+    EXPECT_EQ(m_model->activities()[0].name, "Gym");
+}
+
+TEST_F(PlannerModelTest, EditingAnActivityCanBeUndoneTogetherWithTheCopiesInThePlan)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    planInFirstSlot(Weekday::MONDAY, 0);
+
+    m_model->updateActivity(0, Activity{ .name = "Strength", .difficulty = Difficulty::LIGHT });
+    ASSERT_EQ(firstSlotOf(Weekday::MONDAY)->name, "Strength");
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_EQ(m_model->activities()[0].name, "Gym");
+    EXPECT_EQ(m_model->activities()[0].difficulty, Difficulty::HARD);
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->name, "Gym");
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->difficulty, Difficulty::HARD);
+
+    EXPECT_TRUE(m_model->undoStack().redo());
+    EXPECT_EQ(m_model->activities()[0].name, "Strength");
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->name, "Strength");
+}
+
+TEST_F(PlannerModelTest, RemovingAnActivityCanBeUndoneAtItsPositionTogetherWithItsSlots)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    m_model->addActivity(Activity{ .name = "Running", .difficulty = Difficulty::MEDIUM });
+    planInFirstSlot(Weekday::MONDAY, 1);
+    planInFirstSlot(Weekday::TUESDAY, 2);
+    const auto readingId = m_model->activities()[1].id;
+
+    m_model->removeActivity(1);
+    ASSERT_EQ(m_model->activities().size(), 2U);
+    ASSERT_FALSE(firstSlotOf(Weekday::MONDAY).has_value());
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+
+    ASSERT_EQ(m_model->activities().size(), 3U);
+    EXPECT_EQ(m_model->activities()[0].name, "Gym");
+    EXPECT_EQ(m_model->activities()[1].name, "Reading");
+    EXPECT_EQ(m_model->activities()[1].id, readingId);
+    EXPECT_EQ(m_model->activities()[2].name, "Running");
+    ASSERT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->id, readingId);
+    EXPECT_EQ(firstSlotOf(Weekday::TUESDAY)->name, "Running");
+}
+
+TEST_F(PlannerModelTest, ChangingASlotCanBeUndoneAndRedone)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    planInFirstSlot(Weekday::MONDAY, 0);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_FALSE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_EQ(m_model->activities().size(), 1U) << "only the slot change is undone";
+
+    EXPECT_TRUE(m_model->undoStack().redo());
+    ASSERT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->name, "Gym");
+}
+
+TEST_F(PlannerModelTest, ReducingTheSlotCountCanBeUndoneAndBringsTheDroppedSlotsBack)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    DayPlan monday = m_model->weekPlan()[0];
+    monday.slots[3] = m_model->activities()[0];
+    m_model->updateDay(Weekday::MONDAY, monday);
+    ASSERT_EQ(m_model->settings().slots, 4);
+
+    EXPECT_TRUE(m_model->updateSlotCount(3));
+    ASSERT_EQ(m_model->weekPlan()[0].slots.size(), 3U);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+
+    EXPECT_EQ(m_model->settings().slots, 4);
+    ASSERT_EQ(m_model->weekPlan()[0].slots.size(), 4U);
+    ASSERT_TRUE(m_model->weekPlan()[0].slots[3].has_value());
+    EXPECT_EQ(m_model->weekPlan()[0].slots[3]->name, "Gym");
+}
+
+TEST_F(PlannerModelTest, ANewChangeDropsTheStepsThatCouldBeRedone)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    EXPECT_TRUE(m_model->undoStack().undo());
+    ASSERT_TRUE(m_model->undoStack().canRedo());
+
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+
+    EXPECT_FALSE(m_model->undoStack().canRedo());
+}
+
+TEST_F(PlannerModelTest, ChangesThatLeaveTheContentAsItIsTakeNoStepOfTheHistory)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    planInFirstSlot(Weekday::MONDAY, 0);
+    const auto depth = m_model->undoStack().undoDepth();
+
+    m_model->updateActivity(0, Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->updateDay(Weekday::MONDAY, m_model->weekPlan()[0]);
+    EXPECT_FALSE(m_model->updateSlotCount(m_model->settings().slots));
+    m_model->updateActivity(5, Activity{ .name = "Nothing", .difficulty = Difficulty::HARD });
+    m_model->removeActivity(5);
+
+    EXPECT_EQ(m_model->undoStack().undoDepth(), depth);
+}
+
+TEST_F(PlannerModelTest, UndoAndRedoAreSavedLikeAnyOtherChange)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_TRUE(PlannerModel().activities().empty());
+
+    EXPECT_TRUE(m_model->undoStack().redo());
+    const PlannerModel reloaded;
+    ASSERT_EQ(reloaded.activities().size(), 1U);
+    EXPECT_EQ(reloaded.activities()[0].name, "Gym");
+}
+
+TEST_F(PlannerModelTest, ViewsAreToldAboutUndoneAndRedoneSlotChangesButNotAboutTheChangeTheyMade)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    int weekPlanChanges = 0;
+    m_model->signalWeekPlanChanged().connect([&weekPlanChanges] { ++weekPlanChanges; });
+
+    planInFirstSlot(Weekday::MONDAY, 0);
+    EXPECT_EQ(weekPlanChanges, 0);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_EQ(weekPlanChanges, 1);
+
+    EXPECT_TRUE(m_model->undoStack().redo());
+    EXPECT_EQ(weekPlanChanges, 2);
+}
+
+TEST_F(PlannerModelTest, ViewsAreToldWhichPartOfTheContentWasUndone)
+{
+    int activityChanges = 0;
+    int settingsChanges = 0;
+    m_model->signalActivitiesChanged().connect([&activityChanges] { ++activityChanges; });
+    m_model->signalSettingsChanged().connect([&settingsChanges] { ++settingsChanges; });
+
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    EXPECT_EQ(activityChanges, 1);
+    EXPECT_EQ(settingsChanges, 0);
+
+    EXPECT_FALSE(m_model->updateSlotCount(3));
+    EXPECT_EQ(settingsChanges, 1);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_EQ(settingsChanges, 2);
+    EXPECT_EQ(activityChanges, 1) << "undoing the slot count does not touch the activities";
+}
+
+TEST_F(PlannerModelTest, TheHistoryNamesTheLastStep)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto afterAdding = m_model->undoStack().undoDescription();
+    planInFirstSlot(Weekday::MONDAY, 0);
+    const auto afterPlanning = m_model->undoStack().undoDescription();
+
+    EXPECT_FALSE(afterAdding.empty());
+    EXPECT_FALSE(afterPlanning.empty());
+    EXPECT_NE(afterAdding, afterPlanning);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_EQ(m_model->undoStack().undoDescription(), afterAdding);
+    EXPECT_EQ(m_model->undoStack().redoDescription(), afterPlanning);
+}

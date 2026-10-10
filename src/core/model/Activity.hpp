@@ -12,11 +12,11 @@ enum class Difficulty
 
 struct Activity
 {
-    // Stable identity of the activity in the catalog. The slots of the plan refer to it, so renaming
-    // an activity does not detach it from the plan. Empty until the activity is added to the catalog.
     std::string id{};
     std::string name;
     Difficulty difficulty;
+
+    [[nodiscard]] bool operator==(const Activity&) const = default;
 
     static int difficultyLoad(const Difficulty difficulty)
     {

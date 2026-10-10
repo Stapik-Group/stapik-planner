@@ -289,3 +289,49 @@ TEST_F(PlannerModelCloudTest, FlushWithoutAConnectionReturnsImmediately)
     EXPECT_LT(std::chrono::steady_clock::now() - started, 500ms);
     EXPECT_TRUE(m_outcomes.empty());
 }
+
+TEST_F(PlannerModelCloudTest, ADocumentTakenFromTheCloudClearsTheHistory)
+{
+    createModel();
+    m_model->addActivity(Activity{ .name = "Local", .difficulty = Difficulty::LIGHT });
+    ASSERT_TRUE(m_model->undoStack().canUndo());
+
+    auto newerThanTheLocalOne = makeSampleDocument(0);
+    newerThanTheLocalOne.updatedAt = std::chrono::system_clock::now() + 1h;
+    m_fake.stored = cloudDocumentOf(newerThanTheLocalOne, 900);
+    ASSERT_TRUE(m_model->connectCloud(validConfig()));
+    ASSERT_TRUE(waitForOutcomes(1));
+
+    EXPECT_EQ(m_outcomes.front(), SyncState::ServerWon);
+    EXPECT_EQ(m_model->activities().size(), 2U);
+    EXPECT_FALSE(m_model->undoStack().canUndo()) << "the steps describe a document that has been replaced";
+    EXPECT_FALSE(m_model->undoStack().canRedo());
+}
+
+TEST_F(PlannerModelCloudTest, AnEditThatStaysAfterTheCloudCopyWonCanStillBeUndone)
+{
+    m_fake.stored = cloudDocumentOf(makeSampleDocument(200), 900);
+    createModel(validConfig());
+
+    m_model->addActivity(Activity{ .name = "Local", .difficulty = Difficulty::LIGHT });
+    ASSERT_TRUE(pumpUntil([this] { return !m_outcomes.empty() && m_outcomes.back() == SyncState::Synchronized; }));
+
+    ASSERT_EQ(m_model->activities().size(), 1U);
+    EXPECT_TRUE(m_model->undoStack().canUndo());
+}
+
+TEST_F(PlannerModelCloudTest, UndoingAChangeIsUploadedLikeAnyOtherChange)
+{
+    createModel();
+    ASSERT_TRUE(m_model->connectCloud(validConfig()));
+    ASSERT_TRUE(waitForOutcomes(1));
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    ASSERT_TRUE(waitForOutcomes(2));
+    ASSERT_EQ(m_fake.stored->content.at("payload").at("activities").size(), 1U);
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+    ASSERT_TRUE(waitForOutcomes(3));
+
+    EXPECT_EQ(m_outcomes[2], SyncState::Synchronized);
+    EXPECT_EQ(m_fake.stored->content.at("payload").at("activities").size(), 0U);
+}

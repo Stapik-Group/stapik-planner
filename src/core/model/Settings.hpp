@@ -7,4 +7,6 @@ struct Settings
     static constexpr int MAX_SLOTS = 8;
 
     int slots = DEFAULT_SLOTS;
+
+    [[nodiscard]] bool operator==(const Settings&) const = default;
 };

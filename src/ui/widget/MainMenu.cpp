@@ -13,10 +13,10 @@ MainMenu::MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const st
     m_actionHandler(window, model),
     m_standardMenu(window, StandardMenuOptions{
         .cloudItems = true,
-        .undoRedoItems = false,
+        .undoRedoItems = true,
         .aboutItem = true,
         .themes = &themes,
-        .undoStack = nullptr
+        .undoStack = &model.undoStack()
     })
 {
     m_actionHandler.registerActions();

@@ -1,7 +1,9 @@
 #include "PlannerModel.hpp"
 #include "../../infrastructure/storage/PlannerStorage.hpp"
 
+#include "stapik/command/ICommand.hpp"
 #include "stapik/domain/IdGenerator.hpp"
+#include "stapik/locale/LocaleManager.hpp"
 #include "stapik/log/Log.hpp"
 
 #include <glib.h>
@@ -13,46 +15,66 @@
 
 namespace
 {
-    // Brings the copies of an activity kept in the plan in line with its catalog entry.
-    bool refreshPlannedCopies(WeekPlan& weekPlan, const Activity& activity)
+    void refreshPlannedCopies(WeekPlan& weekPlan, const Activity& activity)
     {
-        bool changed = false;
         for (auto& day : weekPlan)
         {
             for (auto& slot : day.slots)
             {
-                if (!slot.has_value() || slot->id != activity.id)
-                    continue;
-
-                if (slot->name == activity.name && slot->difficulty == activity.difficulty)
-                    continue;
-
-                slot = activity;
-                changed = true;
+                if (slot.has_value() && slot->id == activity.id)
+                    slot = activity;
             }
         }
-
-        return changed;
     }
 
-    bool clearPlannedCopies(WeekPlan& weekPlan, const std::string& activityId)
+    void clearPlannedCopies(WeekPlan& weekPlan, const std::string& activityId)
     {
-        bool changed = false;
         for (auto& day : weekPlan)
         {
             for (auto& slot : day.slots)
             {
                 if (slot.has_value() && slot->id == activityId)
-                {
                     slot.reset();
-                    changed = true;
-                }
             }
         }
-
-        return changed;
     }
 }
+
+class PlannerModel::ContentCommand final : public stapik::command::ICommand
+{
+public:
+    ContentCommand(PlannerModel& model, const char* descriptionKey, Content before, Content after, const bool announceWeekPlan) :
+        m_model(model),
+        m_descriptionKey(descriptionKey),
+        m_before(std::move(before)),
+        m_after(std::move(after)),
+        m_announceWeekPlanOnFirstExecute(announceWeekPlan)
+    {}
+
+    void execute() override
+    {
+        m_model.restoreContent(m_after, m_executedBefore || m_announceWeekPlanOnFirstExecute);
+        m_executedBefore = true;
+    }
+
+    void undo() override
+    {
+        m_model.restoreContent(m_before, true);
+    }
+
+    [[nodiscard]] std::string description() const override
+    {
+        return LocaleManager::instance().translate(m_descriptionKey);
+    }
+
+private:
+    PlannerModel& m_model;
+    const char* m_descriptionKey;
+    Content m_before;
+    Content m_after;
+    bool m_announceWeekPlanOnFirstExecute;
+    bool m_executedBefore = false;
+};
 
 PlannerModel::PlannerModel() :
     PlannerModel(std::make_unique<PlannerStorage>(), stapik::sync::defaultCloudSessionHooks(CLOUD_SLOT_KEY))
@@ -66,7 +88,6 @@ PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync
     m_cloudSession.signalStatusChanged().connect([this](const stapik::sync::SyncStatus status) { m_signalCloudStatusChanged.emit(status); });
     m_cloudSession.signalOutcome().connect([this](const CloudOutcome& outcome) { onCloudOutcome(outcome); });
 
-    // A connection restored from the saved configuration is synchronized at start-up.
     if (m_cloudSession.isConnected())
         m_cloudSession.syncNow(m_document);
 }
@@ -93,10 +114,11 @@ const WeekPlan& PlannerModel::weekPlan() const
 
 void PlannerModel::addActivity(Activity activity)
 {
+    auto after = content();
     activity.id = stapik::domain::generateId();
-    m_document.activities.push_back(std::move(activity));
-    persist();
-    m_signalActivitiesChanged.emit();
+    after.activities.push_back(std::move(activity));
+
+    execute("command.activity.add", std::move(after));
 }
 
 void PlannerModel::updateActivity(const std::size_t index, Activity activity)
@@ -104,14 +126,12 @@ void PlannerModel::updateActivity(const std::size_t index, Activity activity)
     if (index >= m_document.activities.size())
         return;
 
-    activity.id = m_document.activities[index].id;
-    m_document.activities[index] = std::move(activity);
-    const auto planChanged = refreshPlannedCopies(m_document.weekPlan, m_document.activities[index]);
+    auto after = content();
+    activity.id = after.activities[index].id;
+    after.activities[index] = std::move(activity);
+    refreshPlannedCopies(after.weekPlan, after.activities[index]);
 
-    persist();
-    m_signalActivitiesChanged.emit();
-    if (planChanged)
-        m_signalWeekPlanChanged.emit();
+    execute("command.activity.edit", std::move(after));
 }
 
 void PlannerModel::removeActivity(const std::size_t index)
@@ -119,50 +139,33 @@ void PlannerModel::removeActivity(const std::size_t index)
     if (index >= m_document.activities.size())
         return;
 
-    const auto removedId = m_document.activities[index].id;
-    m_document.activities.erase(m_document.activities.begin() + static_cast<Activities::difference_type>(index));
-    const auto planChanged = clearPlannedCopies(m_document.weekPlan, removedId);
+    auto after = content();
+    const auto removedId = after.activities[index].id;
+    after.activities.erase(after.activities.begin() + static_cast<Activities::difference_type>(index));
+    clearPlannedCopies(after.weekPlan, removedId);
 
-    persist();
-    m_signalActivitiesChanged.emit();
-    if (planChanged)
-        m_signalWeekPlanChanged.emit();
-}
-
-void PlannerModel::updateSettings(Settings settings)
-{
-    m_document.settings = settings;
-    persist();
-    m_signalSettingsChanged.emit();
+    execute("command.activity.remove", std::move(after));
 }
 
 bool PlannerModel::updateSlotCount(const int newSlotCount)
 {
+    auto after = content();
     bool dataLost = false;
-    for (auto& day : m_document.weekPlan)
+    for (auto& day : after.weekPlan)
     {
-        for (auto i = static_cast<std::size_t>(newSlotCount); i < day.slots.size(); ++i)
+        for (auto slotIndex = static_cast<std::size_t>(newSlotCount); slotIndex < day.slots.size(); ++slotIndex)
         {
-            if (day.slots[i].has_value())
+            if (day.slots[slotIndex].has_value())
                 dataLost = true;
         }
+
         day.slots.resize(static_cast<std::size_t>(newSlotCount));
     }
 
-    m_document.settings.slots = newSlotCount;
-
-    persist();
-    m_signalSettingsChanged.emit();
-    m_signalWeekPlanChanged.emit();
+    after.settings.slots = newSlotCount;
+    execute("command.slots.count", std::move(after));
 
     return dataLost;
-}
-
-void PlannerModel::updateWeekPlan(const WeekPlan& weekPlan)
-{
-    m_document.weekPlan = weekPlan;
-    persist();
-    m_signalWeekPlanChanged.emit();
 }
 
 void PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
@@ -171,9 +174,15 @@ void PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
     if (index >= m_document.weekPlan.size())
         return;
 
-    m_document.weekPlan[index] = std::move(dayPlan);
-    persist();
-    m_signalWeekPlanChanged.emit();
+    auto after = content();
+    after.weekPlan[index] = std::move(dayPlan);
+
+    execute("command.slot.change", std::move(after), false);
+}
+
+stapik::command::UndoStack& PlannerModel::undoStack()
+{
+    return m_undoStack;
 }
 
 bool PlannerModel::connectCloud(const CloudStorageConfig& config)
@@ -191,7 +200,6 @@ void PlannerModel::flushCloud(const std::chrono::milliseconds timeout)
     if (!m_cloudSession.hasPendingWork())
         return;
 
-    // Waiting is over when the synchronization is done or cannot go on (offline, conflict, unreadable cloud copy).
     bool settled = false;
     auto outcomeConnection = m_cloudSession.signalOutcome().connect([&settled](const CloudOutcome& outcome)
     {
@@ -253,6 +261,41 @@ sigc::signal<void(const PlannerModel::CloudOutcome&)>& PlannerModel::signalCloud
     return m_signalCloudOutcome;
 }
 
+PlannerModel::Content PlannerModel::content() const
+{
+    return Content{ .settings = m_document.settings, .activities = m_document.activities, .weekPlan = m_document.weekPlan };
+}
+
+void PlannerModel::execute(const char* descriptionKey, Content after, const bool announceWeekPlan)
+{
+    auto before = content();
+    if (before == after)
+        return;
+
+    m_undoStack.execute(std::make_unique<ContentCommand>(*this, descriptionKey, std::move(before), std::move(after), announceWeekPlan));
+}
+
+void PlannerModel::restoreContent(const Content& content, const bool announceWeekPlan)
+{
+    const bool activitiesChanged = m_document.activities != content.activities;
+    const bool settingsChanged = m_document.settings != content.settings;
+    const bool weekPlanChanged = m_document.weekPlan != content.weekPlan;
+
+    m_document.settings = content.settings;
+    m_document.activities = content.activities;
+    m_document.weekPlan = content.weekPlan;
+    persist();
+
+    if (activitiesChanged)
+        m_signalActivitiesChanged.emit();
+
+    if (settingsChanged)
+        m_signalSettingsChanged.emit();
+
+    if (weekPlanChanged && announceWeekPlan)
+        m_signalWeekPlanChanged.emit();
+}
+
 void PlannerModel::persist()
 {
     m_document.updatedAt = std::chrono::system_clock::now();
@@ -280,11 +323,6 @@ void PlannerModel::replaceWithCloudDocument(const CloudOutcome& outcome)
 {
     const auto& cloudDocument = outcome.document;
 
-    // The synchronization runs in the background, so the planner may have been edited since it started.
-    // The scheduler drops that queued change when the cloud copy wins, which would lose the edit even
-    // when it is newer than the cloud copy, so the newer local edit is pushed again. A cloud copy
-    // without a known time (written by an earlier version) is always taken, and so is a copy that
-    // the scheduler accepted after losing the race twice, to avoid retrying forever.
     const auto cloudBaseline = cloudDocument.lastKnownCloudUpdate();
     const bool cloudTimeKnown = cloudDocument.lastUpdate() != PlannerDocument::TimePoint{};
     const bool localIsNewer = m_document.lastUpdate() > cloudDocument.lastUpdate();
@@ -295,6 +333,7 @@ void PlannerModel::replaceWithCloudDocument(const CloudOutcome& outcome)
         return;
     }
 
+    m_undoStack.clear();
     m_document = cloudDocument;
     saveToDisk();
     m_signalActivitiesChanged.emit();
@@ -302,8 +341,6 @@ void PlannerModel::replaceWithCloudDocument(const CloudOutcome& outcome)
     m_signalWeekPlanChanged.emit();
 }
 
-// The scheduler discards its queued change after it has announced the outcome, so a push requested
-// from the outcome handler would be discarded with it. It has to wait until the handling is over.
 void PlannerModel::pushLocalEditAfterTheOutcomeIsHandled()
 {
     if (m_deferredPush.connected())

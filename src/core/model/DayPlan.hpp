@@ -26,6 +26,8 @@ struct DayPlan
         weekday(day),
         slots(static_cast<size_t>(slotsCount), std::nullopt) {}
 
+    [[nodiscard]] bool operator==(const DayPlan&) const = default;
+
     [[nodiscard]] int totalLoad() const
     {
         int load = 0;

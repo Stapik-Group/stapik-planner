@@ -13,6 +13,7 @@ A desktop weekly activity planner for Linux, written in C++20 using GTK4/gtkmm. 
 - **Multilingual UI** - Polish, English and German interface with instant switching
 - **Five themes** - Classic, Classic Pink, Modern, Dark and Neoclassic, switchable live from the menu; the themes and the common parts of the look are shared with the other Stapik applications
 - **Auto-save** - schedule and catalog data saved locally after every change
+- **Undo / redo** - every change to the plan, the activities and the slot count can be undone and redone from the **Edit** menu (Ctrl+Z, Ctrl+Shift+Z), including reducing the slot count, which brings the dropped slots back. The history lasts for the session and is cleared when a newer version from the cloud replaces the plan
 - **Retro aesthetic** — classic look with raised buttons, blue header bar and grey cells by default, consistent with Stapik Calendar
 
 ## Dependencies
@@ -139,6 +140,7 @@ Schedule, catalog and settings are stored locally at `~/.local/share/stapikplann
 - [x] `.deb` package for easier distribution
 - [x] In-app UI for changing the number of slots per day
 - [x] Multiple themes (Classic / Classic Pink / Modern / Dark / Neoclassic)
+- [x] Undo / redo
 - [ ] Copy a day's plan to another day
 - [ ] Weekly load summary / overview
 - [ ] Flatpak package

@@ -3,6 +3,7 @@
 #include "PlannerDocument.hpp"
 
 #include "stapik/cloud/CloudStorageConfig.hpp"
+#include "stapik/command/UndoStack.hpp"
 #include "stapik/sync/CloudSession.hpp"
 
 #include <sigc++/connection.h>
@@ -38,16 +39,13 @@ public:
     void addActivity(Activity activity);
     void updateActivity(std::size_t index, Activity activity);
     void removeActivity(std::size_t index);
-    void updateSettings(Settings settings);
     [[nodiscard]] bool updateSlotCount(int newSlotCount);
-    void updateWeekPlan(const WeekPlan& weekPlan);
     void updateDay(Weekday weekday, DayPlan dayPlan);
 
-    // Saves the configuration, connects and starts a synchronization in the background.
-    // Returns false when the configuration is incomplete or no connection could be created.
+    [[nodiscard]] stapik::command::UndoStack& undoStack();
+
     [[nodiscard]] bool connectCloud(const CloudStorageConfig& config);
     void syncCloud();
-    // Pushes the pending changes and waits for the result, but not longer than the timeout.
     void flushCloud(std::chrono::milliseconds timeout = CLOUD_FLUSH_TIMEOUT);
     [[nodiscard]] bool isCloudConnected() const;
     [[nodiscard]] const std::optional<CloudStorageConfig>& cloudConfig() const;
@@ -57,12 +55,23 @@ public:
     sigc::signal<void()>& signalSettingsChanged();
     sigc::signal<void()>& signalWeekPlanChanged();
     sigc::signal<void(stapik::sync::SyncStatus)>& signalCloudStatusChanged();
-    // Emitted after the model has applied the result of a synchronization.
     sigc::signal<void(const CloudOutcome&)>& signalCloudOutcome();
 private:
+    struct Content
+    {
+        Settings settings;
+        Activities activities;
+        WeekPlan weekPlan;
+
+        [[nodiscard]] bool operator==(const Content&) const = default;
+    };
+
+    class ContentCommand;
+
     std::unique_ptr<PlannerStorage> m_storage;
     PlannerDocument m_document;
     stapik::sync::CloudSession<PlannerDocument> m_cloudSession;
+    stapik::command::UndoStack m_undoStack;
 
     sigc::signal<void()> m_signalActivitiesChanged;
     sigc::signal<void()> m_signalSettingsChanged;
@@ -71,6 +80,9 @@ private:
     sigc::signal<void(const CloudOutcome&)> m_signalCloudOutcome;
     sigc::connection m_deferredPush;
 
+    [[nodiscard]] Content content() const;
+    void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);
+    void restoreContent(const Content& content, bool announceWeekPlan);
     void persist();
     void saveToDisk();
     void onCloudOutcome(const CloudOutcome& outcome);
