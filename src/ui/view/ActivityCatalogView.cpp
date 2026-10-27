@@ -4,6 +4,8 @@
 #include "../widget/catalog/ActivityCatalogItemRow.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/ConfirmDialog.hpp"
+#include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <gtkmm/window.h>
 
@@ -22,6 +24,7 @@ ActivityCatalogView::ActivityCatalogView(PlannerModel& model) :
         const auto& loc = LocaleManager::instance();
         m_titleLabel.set_text(loc.translate("panel.activities.title"));
         m_addButton.set_label(loc.translate("panel.activities.button.add"));
+        refreshCollapseButton();
         refreshList();
     });
 }
@@ -37,9 +40,15 @@ void ActivityCatalogView::initLayout()
     m_addButton.set_label(loc.translate("panel.activities.button.add"));
     m_addButton.signal_clicked().connect([this] { onAddRequested(); });
 
+    m_collapseButton.set_has_frame(false);
+    m_collapseButton.signal_toggled().connect([this] { onCollapseToggled(); });
+    refreshCollapseButton();
+
     m_headerBox.set_margin(8);
+    m_headerBox.set_spacing(4);
     m_headerBox.append(m_titleLabel);
     m_headerBox.append(m_addButton);
+    m_headerBox.append(m_collapseButton);
 
     m_listBox.set_margin(8);
 
@@ -52,18 +61,40 @@ void ActivityCatalogView::initLayout()
     append(m_scrolledWindow);
 }
 
+void ActivityCatalogView::refreshCollapseButton()
+{
+    const auto& loc = LocaleManager::instance();
+    const bool collapsed = m_collapseButton.get_active();
+
+    m_collapseButton.set_label(collapsed ? "▴" : "▾");
+    m_collapseButton.set_tooltip_text(loc.translate(collapsed ? "panel.activities.expand" : "panel.activities.collapse"));
+}
+
+void ActivityCatalogView::onCollapseToggled()
+{
+    const bool collapsed = m_collapseButton.get_active();
+
+    m_scrolledWindow.set_visible(!collapsed);
+    refreshCollapseButton();
+    m_signalCollapsedChanged.emit(collapsed);
+}
+
+sigc::signal<void(bool)>& ActivityCatalogView::signalCollapsedChanged()
+{
+    return m_signalCollapsedChanged;
+}
+
 void ActivityCatalogView::refreshList()
 {
     while (auto* child = m_listBox.get_first_child())
         m_listBox.remove(*child);
 
-    const auto& activities = m_model.activities();
-    for (int i = 0; i < static_cast<int>(activities.size()); ++i)
+    for (const auto& activity : m_model.activities())
     {
-        auto* row = Gtk::make_managed<ActivityCatalogItemRow>(activities[static_cast<std::size_t>(i)]);
+        auto* row = Gtk::make_managed<ActivityCatalogItemRow>(activity);
 
-        row->signalEditRequested().connect([this, i] { onEditRequested(i); });
-        row->signalDeleteRequested().connect([this, i] { onDeleteRequested(i); });
+        row->signalEditRequested().connect([this, id = activity.id] { onEditRequested(id); });
+        row->signalDeleteRequested().connect([this, id = activity.id] { onDeleteRequested(id); });
 
         m_listBox.append(*row);
     }
@@ -71,40 +102,88 @@ void ActivityCatalogView::refreshList()
 
 void ActivityCatalogView::onAddRequested()
 {
-    showActivityDialog(-1);
+    showActivityDialog(std::nullopt);
 }
 
-void ActivityCatalogView::onEditRequested(const int index)
+void ActivityCatalogView::onEditRequested(const std::string& id)
 {
-    showActivityDialog(index);
+    showActivityDialog(id);
 }
 
-void ActivityCatalogView::onDeleteRequested(const int index) const
+void ActivityCatalogView::onDeleteRequested(const std::string& id)
 {
-    if (index < 0 || index >= static_cast<int>(m_model.activities().size()))
+    const auto index = m_model.findActivity(id);
+    if (!index.has_value())
         return;
 
-    m_model.removeActivity(static_cast<std::size_t>(index));
+    const auto plannedSlots = m_model.plannedSlotCount(id);
+    if (plannedSlots == 0)
+    {
+        m_model.removeActivity(*index);
+        return;
+    }
+
+    auto* window = dynamic_cast<Gtk::Window*>(get_root());
+    if (window == nullptr)
+        return;
+
+    const auto& localeManager = LocaleManager::instance();
+    const LocalizationEngine::Arguments arguments = {
+        { "name", m_model.activities()[*index].name },
+        { "count", std::to_string(plannedSlots) }
+    };
+
+    showConfirmDialog(
+        *window,
+        ConfirmDialogOptions{
+            .title = localeManager.translate("dialog.activity.delete.title", arguments),
+            .message = localeManager.translate("dialog.activity.delete.message", arguments),
+            .confirmLabel = localeManager.translate("dialog.activity.delete.button"),
+            .destructive = true
+        },
+        [this, id]
+        {
+            if (const auto current = m_model.findActivity(id); current.has_value())
+                m_model.removeActivity(*current);
+        });
 }
 
-void ActivityCatalogView::showActivityDialog(const int editIndex)
+std::vector<std::string> ActivityCatalogView::namesExcept(const std::optional<std::size_t>& index) const
+{
+    std::vector<std::string> names;
+    const auto& activities = m_model.activities();
+
+    for (std::size_t position = 0; position < activities.size(); ++position)
+    {
+        if (position != index)
+            names.push_back(activities[position].name);
+    }
+
+    return names;
+}
+
+void ActivityCatalogView::showActivityDialog(const std::optional<std::string>& editedId)
 {
     auto* window = dynamic_cast<Gtk::Window*>(get_root());
     if (window == nullptr)
         return;
 
-    ActivityDialog* dialog = editIndex >= 0
-        ? new ActivityDialog(*window, m_model.activities()[static_cast<std::size_t>(editIndex)])
-        : new ActivityDialog(*window);
+    const auto editedIndex = editedId.has_value() ? m_model.findActivity(*editedId) : std::nullopt;
+    if (editedId.has_value() && !editedIndex.has_value())
+        return;
 
-    dialog->signal_response().connect([this, dialog, editIndex](const int responseId)
+    ActivityDialog* dialog = editedIndex.has_value()
+        ? new ActivityDialog(*window, m_model.activities()[*editedIndex], namesExcept(editedIndex))
+        : new ActivityDialog(*window, namesExcept(std::nullopt));
+
+    dialog->signal_response().connect([this, window, dialog, editedId](const int responseId)
     {
         if (responseId == Gtk::ResponseType::OK)
         {
             if (auto result = dialog->getResult(); result.has_value())
             {
-                if (editIndex >= 0)
-                    m_model.updateActivity(static_cast<std::size_t>(editIndex), std::move(result.value()));
+                if (editedId.has_value())
+                    saveEditedActivity(*window, *editedId, std::move(result.value()));
                 else
                     m_model.addActivity(std::move(result.value()));
             }
@@ -112,6 +191,17 @@ void ActivityCatalogView::showActivityDialog(const int editIndex)
         dialog->hide();
     });
 
-    dialog->signal_hide().connect([dialog] { delete dialog; });
+    deleteOnHide(dialog);
     dialog->show();
+}
+
+void ActivityCatalogView::saveEditedActivity(Gtk::Window& window, const std::string& id, Activity activity)
+{
+    const auto& localeManager = LocaleManager::instance();
+    const auto index = m_model.findActivity(id);
+
+    if (!index.has_value())
+        showMessageDialog(window, localeManager.translate("dialog.activity.edit"), localeManager.translate("dialog.activity.gone"));
+    else if (!m_model.updateActivity(*index, std::move(activity)))
+        showMessageDialog(window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.activity"));
 }

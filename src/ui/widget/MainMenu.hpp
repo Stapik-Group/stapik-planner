@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../action/MenuActionHandler.hpp"
+#include "../action/PlanActionHandler.hpp"
 #include "../../core/model/PlannerModel.hpp"
 
+#include "stapik/settings/ObservableSetting.hpp"
 #include "stapik/theme/ThemeRegistry.hpp"
 #include "stapik/ui/menu/RadioAction.hpp"
 #include "stapik/ui/menu/StandardMenu.hpp"
@@ -25,17 +27,23 @@ public:
 
     Gtk::PopoverMenuBar& getMenuBar();
 private:
-    static constexpr int MIN_SLOT_OPTION = 3;
-    static constexpr int MAX_SLOT_OPTION = 6;
-
     Gtk::ApplicationWindow& m_window;
     PlannerModel& m_model;
     MenuActionHandler m_actionHandler;
+    PlanActionHandler m_planActions;
+    stapik::settings::ObservableSetting<bool> m_updateCheckSetting;
     StandardMenu m_standardMenu;
     std::unique_ptr<stapik::ui::RadioAction<int>> m_slotCountAction;
     sigc::connection m_settingsConnection;
+    sigc::connection m_plansConnection;
+    sigc::connection m_rebuildConnection;
 
     void initSlotCountAction();
     void buildSlotCountMenu(Gio::Menu& settingsMenu) const;
+    static void buildDisconnectMenu(Gio::Menu& fileMenu);
+    void buildPlanMenu(Gio::Menu& planMenu) const;
+    void onPlansChanged();
+    void scheduleMenuRebuild();
+    static void buildRestoreBackupMenu(Gio::Menu& fileMenu);
     void onSlotCountSelected(int slotCount);
 };

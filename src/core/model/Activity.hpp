@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 enum class Difficulty
@@ -44,11 +45,12 @@ struct Activity
         return "normal";
     }
 
-    static Difficulty deserializeDifficulty(const std::string& str)
+    static std::optional<Difficulty> deserializeDifficulty(const std::string& str)
     {
         if (str == "light") return Difficulty::LIGHT;
+        if (str == "normal") return Difficulty::NORMAL;
         if (str == "medium") return Difficulty::MEDIUM;
         if (str == "hard") return Difficulty::HARD;
-        return Difficulty::NORMAL;
+        return std::nullopt;
     }
 };

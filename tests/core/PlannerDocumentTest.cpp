@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <string>
@@ -147,16 +148,33 @@ TEST(PlannerDocumentTest, SlotsAreTruncatedOrPaddedToTheSlotCount)
     EXPECT_FALSE(document.weekPlan[1].slots[2].has_value());
 }
 
-TEST(PlannerDocumentTest, UnknownDifficultyFallsBackToNormal)
+TEST(PlannerDocumentTest, UnknownDifficultyMakesTheDocumentUnreadableInsteadOfDowngradingIt)
 {
     const nlohmann::json json = {
         { "activities", nlohmann::json::array({ { { "name", "Odd" }, { "difficulty", "extreme" } } }) }
     };
 
-    const auto document = PlannerDocument::fromJson(json);
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson(json), std::invalid_argument);
+}
 
-    ASSERT_EQ(document.activities.size(), 1U);
-    EXPECT_EQ(document.activities[0].difficulty, Difficulty::NORMAL);
+TEST(PlannerDocumentTest, UnknownWeekdayMakesTheDocumentUnreadableInsteadOfOverwritingMonday)
+{
+    const nlohmann::json json = {
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "funday" }, { "slots", nlohmann::json::array() } }
+        }) }
+    };
+
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson(json), std::invalid_argument);
+}
+
+TEST(PlannerDocumentTest, EveryDifficultyAndWeekdayWrittenByTheDocumentIsReadBack)
+{
+    for (const auto difficulty : { Difficulty::LIGHT, Difficulty::NORMAL, Difficulty::MEDIUM, Difficulty::HARD })
+        EXPECT_EQ(Activity::deserializeDifficulty(Activity::serializeDifficulty(difficulty)), difficulty);
+
+    for (const auto weekday : { Weekday::MONDAY, Weekday::TUESDAY, Weekday::WEDNESDAY, Weekday::THURSDAY, Weekday::FRIDAY, Weekday::SATURDAY, Weekday::SUNDAY })
+        EXPECT_EQ(DayPlan::deserializeWeekday(DayPlan::serializeWeekday(weekday)), weekday);
 }
 
 TEST(PlannerDocumentTest, UnparsableLastUpdateFallsBackToTheEpochInsteadOfFailing)
@@ -339,4 +357,90 @@ TEST(PlannerDocumentTest, RoundTripIsStable)
     const auto document = makeSampleDocument(42);
 
     EXPECT_EQ(roundTrip(document), document.toJson());
+}
+
+TEST(PlannerDocumentTest, ADayIsEmptyOnlyWhenNoSlotIsPlanned)
+{
+    auto document = makeSampleDocument(10);
+
+    EXPECT_FALSE(document.weekPlan[0].isEmpty());
+    EXPECT_TRUE(document.weekPlan[1].isEmpty());
+    document.weekPlan[1].slots[2] = document.activities[0];
+    EXPECT_FALSE(document.weekPlan[1].isEmpty());
+}
+
+TEST(PlannerDocumentTest, DocumentWithoutPlanSectionsHasTheDefaultPlanOnly)
+{
+    const auto document = PlannerDocument::fromJson(nlohmann::json::object());
+
+    EXPECT_EQ(document.activePlanId, PlannerDocument::DEFAULT_PLAN_ID);
+    EXPECT_TRUE(document.activePlanName.empty());
+    EXPECT_TRUE(document.savedPlans.empty());
+}
+
+TEST(PlannerDocumentTest, SavedPlansSurviveTheRoundTrip)
+{
+    auto document = makeSampleDocument(10);
+    document.activePlanName = "Work";
+    document.savedPlans.push_back(SavedPlan{ .id = "holiday", .name = "Holiday", .weekPlan = PlannerDocument::emptyWeekPlan(document.settings.slots) });
+    document.savedPlans[0].weekPlan[2].slots[1] = document.activities[1];
+
+    const auto reloaded = PlannerDocument::fromJson(document.toJson());
+
+    EXPECT_EQ(reloaded.activePlanName, "Work");
+    ASSERT_EQ(reloaded.savedPlans.size(), 1U);
+    EXPECT_EQ(reloaded.savedPlans[0].id, "holiday");
+    EXPECT_EQ(reloaded.savedPlans[0].name, "Holiday");
+    EXPECT_EQ(reloaded.savedPlans[0].weekPlan, document.savedPlans[0].weekPlan);
+    EXPECT_EQ(reloaded.toJson(), document.toJson());
+}
+
+TEST(PlannerDocumentTest, SlotsOfSavedPlansTakeTheCurrentActivityFromTheCatalog)
+{
+    const nlohmann::json json = {
+        { "activities", nlohmann::json::array({ { { "id", "gym" }, { "name", "Strength" }, { "difficulty", "hard" } } }) },
+        { "savedPlans", nlohmann::json::array({
+            { { "id", "holiday" }, { "name", "Holiday" }, { "weekPlan", nlohmann::json::array({
+                { { "weekday", "monday" }, { "slots", nlohmann::json::array({ { { "id", "gym" }, { "name", "Gym" }, { "difficulty", "light" } } }) } }
+            }) } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    ASSERT_EQ(document.savedPlans.size(), 1U);
+    ASSERT_TRUE(document.savedPlans[0].weekPlan[0].slots[0].has_value());
+    EXPECT_EQ(document.savedPlans[0].weekPlan[0].slots[0]->name, "Strength");
+    EXPECT_EQ(document.savedPlans[0].weekPlan[0].slots[0]->difficulty, Difficulty::HARD);
+}
+
+TEST(PlannerDocumentTest, MissingAndRepeatedPlanIdsAreReplacedKeepingTheActiveOne)
+{
+    const nlohmann::json json = {
+        { "plan", { { "id", "work" }, { "name", "Work" } } },
+        { "savedPlans", nlohmann::json::array({
+            { { "id", "work" }, { "name", "Same id as the active plan" } },
+            { { "name", "No id" } },
+            { { "id", "holiday" }, { "name", "Holiday" } }
+        }) }
+    };
+
+    const auto document = PlannerDocument::fromJson(json);
+
+    EXPECT_EQ(document.activePlanId, "work");
+    ASSERT_EQ(document.savedPlans.size(), 3U);
+    std::set<std::string> ids = { document.activePlanId };
+    for (const auto& plan : document.savedPlans)
+    {
+        EXPECT_FALSE(plan.id.empty());
+        ids.insert(plan.id);
+    }
+    EXPECT_EQ(ids.size(), 4U);
+    EXPECT_EQ(document.savedPlans[2].id, "holiday");
+}
+
+TEST(PlannerDocumentTest, WrongPlanTypesAreRejected)
+{
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson({ { "plan", 5 } }), std::exception);
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson({ { "savedPlans", nlohmann::json::array({ 7 }) } }), std::exception);
 }

@@ -41,6 +41,7 @@ namespace
     {
         stapik::document::SchemaMigrator migrator(PlannerStorage::SCHEMA_VERSION);
         migrator.addStep(0, migrateLegacyEnvelope);
+        migrator.addStep(1, [](nlohmann::json&) {});
         return migrator;
     }
 }
@@ -49,9 +50,12 @@ PlannerStorage::PlannerStorage() :
     PlannerStorage(defaultFilePath())
 {}
 
-PlannerStorage::PlannerStorage(std::filesystem::path filePath) :
-    m_documentFile(std::move(filePath), createMigrator())
-{}
+PlannerStorage::PlannerStorage(std::filesystem::path filePath, const stapik::time::IClock& clock) :
+    m_documentFile(std::move(filePath), createMigrator(), clock),
+    m_clock(clock)
+{
+    m_documentFile.setBackupCount(BACKUP_COUNT);
+}
 
 PlannerDocument PlannerStorage::load() const
 {
@@ -81,9 +85,28 @@ PlannerDocument PlannerStorage::load() const
     return PlannerDocument::createDefault();
 }
 
-bool PlannerStorage::save(const PlannerDocument& document) const
+stapik::storage::FileResult PlannerStorage::save(const PlannerDocument& document) const
 {
-    return m_documentFile.save(document);
+    if (isBackupDue())
+        return m_documentFile.save(document);
+
+    return m_documentFile.exportTo(document, m_documentFile.filePath());
+}
+
+bool PlannerStorage::isBackupDue() const
+{
+    const auto backups = m_documentFile.listBackups();
+    return backups.empty() || m_clock.now() - backups.front().savedAt >= BACKUP_INTERVAL;
+}
+
+std::vector<stapik::document::BackupInfo> PlannerStorage::listBackups() const
+{
+    return m_documentFile.listBackups();
+}
+
+stapik::document::LoadResult<PlannerDocument> PlannerStorage::loadBackup(const stapik::document::BackupInfo& backup) const
+{
+    return m_documentFile.loadBackup(backup);
 }
 
 const std::filesystem::path& PlannerStorage::filePath() const
@@ -101,7 +124,7 @@ std::filesystem::path PlannerStorage::defaultFilePath()
 // survive the next save, which would otherwise overwrite it with an empty planner.
 void PlannerStorage::setAsideUnreadableFile(const std::string_view reason) const
 {
-    const auto timestamp = std::format("{:%Y%m%d-%H%M%S}", std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    const auto timestamp = std::format("{:%Y%m%d-%H%M%S}", std::chrono::floor<std::chrono::seconds>(m_clock.now()));
 
     std::error_code errorCode;
     auto target = filePath();

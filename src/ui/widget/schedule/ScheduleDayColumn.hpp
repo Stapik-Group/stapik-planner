@@ -6,29 +6,48 @@
 #include "../../../core/model/PlannerModel.hpp"
 #include "../../../core/model/DayPlan.hpp"
 
+#include <gdkmm/rectangle.h>
+#include <giomm/menu.h>
+#include <giomm/simpleactiongroup.h>
 #include <gtkmm/box.h>
+#include <gtkmm/gestureclick.h>
+#include <gtkmm/popovermenu.h>
 #include <vector>
 
 class ScheduleDayColumn : public Gtk::Box
 {
 public:
     explicit ScheduleDayColumn(const PlannerModel& model);
+    ~ScheduleDayColumn() override;
     void setDayPlan(const DayPlan& dayPlan);
     [[nodiscard]] DayPlan getDayPlan() const;
     sigc::signal<void()>& signalChanged();
+    sigc::signal<void(Weekday)>& signalCopyRequested();
+    sigc::signal<void()>& signalClearRequested();
+    sigc::signal<void(const DragPayload&, std::size_t)>& signalDropRequested();
     void setActivities(const std::vector<Activity>& activities);
     void setSlotCount(int newSlotCount);
 private:
-    static constexpr int LOAD_LIMIT = 100;
-
     int m_slotCount;
     bool m_suppressChangeSignal = false;
     std::vector<ScheduleDaySlotContainer> m_slots;
     ScheduleDayLoadBar m_loadBar;
     Weekday m_weekday = Weekday::MONDAY;
 
+    Gtk::PopoverMenu m_contextMenu;
+    Glib::RefPtr<Gio::SimpleActionGroup> m_actions;
+    Glib::RefPtr<Gio::SimpleAction> m_clearAction;
+    Glib::RefPtr<Gtk::GestureClick> m_rightClick;
+
     sigc::signal<void()> m_signalChanged;
+    sigc::signal<void(Weekday)> m_signalCopyRequested;
+    sigc::signal<void()> m_signalClearRequested;
+    sigc::signal<void(const DragPayload&, std::size_t)> m_signalDropRequested;
 
     void initLayout();
+    void initContextMenu();
+    void wireSlot(std::size_t index);
+    void showContextMenu(double x, double y);
+    [[nodiscard]] Glib::RefPtr<Gio::Menu> buildContextMenu() const;
     void onSlotChanged();
 };

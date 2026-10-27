@@ -13,5 +13,6 @@ private:
     Gtk::LevelBar m_levelBar;
     Gtk::Label m_loadLabel;
     static constexpr int MAX_LOAD = 100;
+    static constexpr int LABEL_WIDTH_CHARS = 4;
     void initLayout();
 };

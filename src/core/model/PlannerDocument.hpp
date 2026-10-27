@@ -8,6 +8,17 @@
 
 #include <chrono>
 #include <optional>
+#include <string>
+#include <vector>
+
+struct SavedPlan
+{
+    std::string id;
+    std::string name;
+    WeekPlan weekPlan;
+
+    [[nodiscard]] bool operator==(const SavedPlan&) const = default;
+};
 
 // The whole persisted and synchronized state of the planner.
 //
@@ -25,6 +36,13 @@ struct PlannerDocument
     TimePoint updatedAt;
     std::optional<TimePoint> cloudBaseline;
 
+    static constexpr auto DEFAULT_PLAN_ID = "main";
+
+    std::string activePlanId = DEFAULT_PLAN_ID;
+    std::string activePlanName;
+    std::vector<SavedPlan> savedPlans;
+
+    [[nodiscard]] static WeekPlan emptyWeekPlan(int slotsCount);
     [[nodiscard]] static PlannerDocument createDefault();
     [[nodiscard]] static PlannerDocument fromJson(const nlohmann::json& json);
     [[nodiscard]] nlohmann::json toJson() const;

@@ -5,6 +5,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/label.h>
 #include <gtkmm/button.h>
+#include <gtkmm/dragsource.h>
 #include <sigc++/signal.h>
 
 class ActivityCatalogItemRow : public Gtk::Box
@@ -20,10 +21,13 @@ private:
     Gtk::Label m_difficultyLabel;
     Gtk::Button m_editButton;
     Gtk::Button m_deleteButton;
+    std::string m_activityId;
+    Glib::RefPtr<Gtk::DragSource> m_dragSource;
 
     sigc::signal<void()> m_signalEditRequested;
     sigc::signal<void()> m_signalDeleteRequested;
 
     void initLayout(const Activity& activity);
+    void initDragSource();
     static std::string difficultyLabel(Difficulty d);
 };

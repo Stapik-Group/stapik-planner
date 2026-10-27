@@ -1,19 +1,25 @@
 #include "ActivityDialog.hpp"
 
+#include "../../core/model/ActivityName.hpp"
+
 #include "stapik/locale/LocaleManager.hpp"
 
-ActivityDialog::ActivityDialog(Window &parent) :
+#include <utility>
+
+ActivityDialog::ActivityDialog(Window &parent, std::vector<std::string> otherNames) :
     Dialog("", parent, true),
-    m_contentBox(Gtk::Orientation::VERTICAL, 8)
+    m_contentBox(Gtk::Orientation::VERTICAL, 8),
+    m_otherNames(std::move(otherNames))
 {
     const auto &loc = LocaleManager::instance();
     set_title(loc.translate("dialog.activity.add"));
     initLayout();
 }
 
-ActivityDialog::ActivityDialog(Window &parent, const Activity &existing) :
+ActivityDialog::ActivityDialog(Window &parent, const Activity &existing, std::vector<std::string> otherNames) :
     Dialog("", parent, true),
-    m_contentBox(Gtk::Orientation::VERTICAL, 8)
+    m_contentBox(Gtk::Orientation::VERTICAL, 8),
+    m_otherNames(std::move(otherNames))
 {
     const auto &loc = LocaleManager::instance();
     set_title(loc.translate("dialog.activity.edit"));
@@ -31,6 +37,12 @@ void ActivityDialog::initLayout()
     m_nameLabel.set_text(loc.translate("dialog.activity.name.label"));
     m_nameLabel.set_halign(Gtk::Align::START);
     m_nameEntry.set_placeholder_text(loc.translate("dialog.activity.name.placeholder"));
+    m_nameEntry.set_max_length(static_cast<int>(ActivityName::MAX_LENGTH));
+    m_nameEntry.signal_changed().connect([this] { updateValidity(); });
+
+    m_nameErrorLabel.set_halign(Gtk::Align::START);
+    m_nameErrorLabel.add_css_class("stapik-sync-error");
+    m_nameErrorLabel.set_visible(false);
 
     m_difficultyLabel.set_text(loc.translate("dialog.activity.name.difficulty"));
     m_difficultyLabel.set_halign(Gtk::Align::START);
@@ -48,17 +60,32 @@ void ActivityDialog::initLayout()
     m_contentBox.set_margin(16);
     m_contentBox.append(m_nameLabel);
     m_contentBox.append(m_nameEntry);
+    m_contentBox.append(m_nameErrorLabel);
     m_contentBox.append(m_difficultyLabel);
     m_contentBox.append(m_difficultyDropDown);
 
     get_content_area()->append(m_contentBox);
 
     add_button(loc.translate("button.cancel"), Gtk::ResponseType::CANCEL);
-    add_button(loc.translate("button.ok"), Gtk::ResponseType::OK);
+    m_okButton = add_button(loc.translate("button.ok"), Gtk::ResponseType::OK);
 
     set_default_response(Gtk::ResponseType::OK);
     m_nameEntry.set_activates_default(true);
     set_default_size(360, -1);
+    updateValidity();
+}
+
+void ActivityDialog::updateValidity()
+{
+    const auto name = ActivityName::trimmed(m_nameEntry.get_text().raw());
+    const bool empty = name.empty();
+    const bool duplicate = !empty && ActivityName::isTaken(name, m_otherNames);
+
+    m_nameErrorLabel.set_text(duplicate ? LocaleManager::instance().translate("dialog.activity.name.duplicate") : "");
+    m_nameErrorLabel.set_visible(duplicate);
+
+    if (m_okButton != nullptr)
+        m_okButton->set_sensitive(!empty && !duplicate);
 }
 
 void ActivityDialog::setDifficulty(const Difficulty d)
@@ -92,8 +119,8 @@ Difficulty ActivityDialog::getSelectedDifficulty() const
 
 std::optional<Activity> ActivityDialog::getResult() const
 {
-    const auto name = m_nameEntry.get_text();
-    if (name.empty())
+    const auto name = ActivityName::trimmed(m_nameEntry.get_text().raw());
+    if (name.empty() || ActivityName::isTaken(name, m_otherNames))
         return std::nullopt;
 
     return Activity{ .name = name, .difficulty = getSelectedDifficulty() };

@@ -11,6 +11,8 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 add_executable(stapikplanner_tests
+        core/ActivityNameTest.cpp
+        core/DragPayloadTest.cpp
         core/PlannerDocumentTest.cpp
         core/PlannerModelTest.cpp
         core/PlannerModelCloudTest.cpp
