@@ -4,6 +4,7 @@
 
 #include "stapik/document/DocumentFile.hpp"
 #include "stapik/storage/FileError.hpp"
+#include "stapik/time/Clock.hpp"
 
 #include <filesystem>
 #include <string_view>
@@ -16,7 +17,7 @@ public:
     static constexpr int BACKUP_COUNT = 5;
 
     PlannerStorage();
-    explicit PlannerStorage(std::filesystem::path filePath);
+    explicit PlannerStorage(std::filesystem::path filePath, const stapik::time::IClock& clock = stapik::time::systemClock());
 
     [[nodiscard]] PlannerDocument load() const;
     [[nodiscard]] stapik::storage::FileResult save(const PlannerDocument& document) const;
@@ -31,4 +32,5 @@ private:
     void setAsideUnreadableFile(std::string_view reason) const;
 
     stapik::document::DocumentFile<PlannerDocument> m_documentFile;
+    const stapik::time::IClock& m_clock;
 };

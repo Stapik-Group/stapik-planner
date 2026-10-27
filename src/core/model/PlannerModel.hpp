@@ -6,6 +6,7 @@
 #include "stapik/command/UndoStack.hpp"
 #include "stapik/document/BackupInfo.hpp"
 #include "stapik/sync/CloudSession.hpp"
+#include "stapik/time/Clock.hpp"
 
 #include <sigc++/connection.h>
 #include <sigc++/signal.h>
@@ -30,7 +31,7 @@ public:
     static constexpr std::chrono::milliseconds CLOUD_FLUSH_TIMEOUT{ 5000 };
 
     explicit PlannerModel();
-    PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions = {});
+    PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions = {}, const stapik::time::IClock& clock = stapik::time::systemClock());
     ~PlannerModel();
 
     PlannerModel(const PlannerModel&) = delete;
@@ -81,6 +82,7 @@ private:
     std::unique_ptr<PlannerStorage> m_storage;
     PlannerDocument m_document;
     stapik::sync::CloudSession<PlannerDocument> m_cloudSession;
+    const stapik::time::IClock& m_clock;
     stapik::command::UndoStack m_undoStack;
 
     sigc::signal<void()> m_signalActivitiesChanged;

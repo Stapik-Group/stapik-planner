@@ -79,10 +79,11 @@ PlannerModel::PlannerModel() :
     PlannerModel(std::make_unique<PlannerStorage>(), stapik::sync::defaultCloudSessionHooks(CLOUD_SLOT_KEY))
 {}
 
-PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions) :
+PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions, const stapik::time::IClock& clock) :
     m_storage(std::move(storage)),
     m_document(m_storage->load()),
-    m_cloudSession(std::move(cloudHooks), syncOptions)
+    m_cloudSession(std::move(cloudHooks), syncOptions),
+    m_clock(clock)
 {
     m_cloudSession.signalStatusChanged().connect([this](const stapik::sync::SyncStatus status) { m_signalCloudStatusChanged.emit(status); });
     m_cloudSession.signalOutcome().connect([this](const CloudOutcome& outcome) { onCloudOutcome(outcome); });
@@ -313,7 +314,7 @@ void PlannerModel::restoreContent(const Content& content, const bool announceWee
 
 void PlannerModel::persist()
 {
-    m_document.updatedAt = std::chrono::system_clock::now();
+    m_document.updatedAt = m_clock.now();
     saveToDisk();
     m_cloudSession.pushChange(m_document);
 }

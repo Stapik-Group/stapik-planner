@@ -49,8 +49,9 @@ PlannerStorage::PlannerStorage() :
     PlannerStorage(defaultFilePath())
 {}
 
-PlannerStorage::PlannerStorage(std::filesystem::path filePath) :
-    m_documentFile(std::move(filePath), createMigrator())
+PlannerStorage::PlannerStorage(std::filesystem::path filePath, const stapik::time::IClock& clock) :
+    m_documentFile(std::move(filePath), createMigrator(), clock),
+    m_clock(clock)
 {
     m_documentFile.setBackupCount(BACKUP_COUNT);
 }
@@ -113,7 +114,7 @@ std::filesystem::path PlannerStorage::defaultFilePath()
 // survive the next save, which would otherwise overwrite it with an empty planner.
 void PlannerStorage::setAsideUnreadableFile(const std::string_view reason) const
 {
-    const auto timestamp = std::format("{:%Y%m%d-%H%M%S}", std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    const auto timestamp = std::format("{:%Y%m%d-%H%M%S}", std::chrono::floor<std::chrono::seconds>(m_clock.now()));
 
     std::error_code errorCode;
     auto target = filePath();
