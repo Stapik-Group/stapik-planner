@@ -3,7 +3,11 @@
 #include "../../core/model/PlannerModel.hpp"
 
 #include "stapik/cloud/CloudStorageConfig.hpp"
+#include "stapik/document/BackupInfo.hpp"
 
+#include "stapik/sync/SyncStatus.hpp"
+
+#include <giomm/simpleaction.h>
 #include <gtkmm/applicationwindow.h>
 #include <sigc++/connection.h>
 
@@ -20,13 +24,18 @@ public:
 private:
     Gtk::ApplicationWindow& m_window;
     PlannerModel& m_model;
+    Glib::RefPtr<Gio::SimpleAction> m_disconnectAction;
     sigc::connection m_outcomeConnection;
+    sigc::connection m_statusConnection;
     bool m_connectFeedbackPending = false;
 
     void onActionQuit();
     void onActionConnect();
+    void onActionDisconnect();
     void onActionSync();
+    void onActionRestoreBackup();
 
+    void handleChosenBackup(const stapik::document::BackupInfo& backup);
     void handleConfirmedConfig(const CloudStorageConfig& config);
     void showConnectFeedback(const PlannerModel::CloudOutcome& outcome);
 };

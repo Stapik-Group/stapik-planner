@@ -1,8 +1,12 @@
 #include "core/model/PlannerModel.hpp"
 
+#include "infrastructure/storage/PlannerStorage.hpp"
+
+#include "support/FakeClock.hpp"
 #include "support/ScopedEnvironment.hpp"
 
 #include "stapik/app/AppContext.hpp"
+#include "stapik/sync/CloudSessionHooks.hpp"
 
 #include <gtest/gtest.h>
 
@@ -373,4 +377,19 @@ TEST_F(PlannerModelTest, TheHistoryNamesTheLastStep)
     EXPECT_TRUE(m_model->undoStack().undo());
     EXPECT_EQ(m_model->undoStack().undoDescription(), afterAdding);
     EXPECT_EQ(m_model->undoStack().redoDescription(), afterPlanning);
+}
+
+TEST_F(PlannerModelTest, EditsAreStampedWithTheTimeOfTheInjectedClock)
+{
+    const stapik::test::FakeClock clock;
+    m_model.reset();
+    m_model = std::make_unique<PlannerModel>(
+        std::make_unique<PlannerStorage>(),
+        stapik::sync::defaultCloudSessionHooks(PlannerModel::CLOUD_SLOT_KEY),
+        stapik::sync::AsyncSyncOptions{},
+        clock);
+
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+
+    EXPECT_EQ(PlannerStorage().load().lastUpdate(), clock.now());
 }

@@ -4,7 +4,9 @@
 
 #include "stapik/cloud/CloudStorageConfig.hpp"
 #include "stapik/command/UndoStack.hpp"
+#include "stapik/document/BackupInfo.hpp"
 #include "stapik/sync/CloudSession.hpp"
+#include "stapik/time/Clock.hpp"
 
 #include <sigc++/connection.h>
 #include <sigc++/signal.h>
@@ -13,6 +15,8 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 class PlannerStorage;
 
@@ -20,13 +24,14 @@ class PlannerModel
 {
 public:
     using CloudOutcome = stapik::sync::SyncOutcome<PlannerDocument>;
+    using TimePoint = std::chrono::system_clock::time_point;
 
     // The name of the cloud slot. It identifies the planner document on the server, so it must not change.
     static constexpr auto CLOUD_SLOT_KEY = "planner.json";
     static constexpr std::chrono::milliseconds CLOUD_FLUSH_TIMEOUT{ 5000 };
 
     explicit PlannerModel();
-    PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions = {});
+    PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions = {}, const stapik::time::IClock& clock = stapik::time::systemClock());
     ~PlannerModel();
 
     PlannerModel(const PlannerModel&) = delete;
@@ -44,8 +49,12 @@ public:
 
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 
+    [[nodiscard]] std::vector<stapik::document::BackupInfo> listBackups() const;
+    [[nodiscard]] bool restoreBackup(const stapik::document::BackupInfo& backup);
+
     [[nodiscard]] bool connectCloud(const CloudStorageConfig& config);
     void syncCloud();
+    void disconnectCloud();
     void flushCloud(std::chrono::milliseconds timeout = CLOUD_FLUSH_TIMEOUT);
     [[nodiscard]] bool isCloudConnected() const;
     [[nodiscard]] const std::optional<CloudStorageConfig>& cloudConfig() const;
@@ -56,6 +65,8 @@ public:
     sigc::signal<void()>& signalWeekPlanChanged();
     sigc::signal<void(stapik::sync::SyncStatus)>& signalCloudStatusChanged();
     sigc::signal<void(const CloudOutcome&)>& signalCloudOutcome();
+    sigc::signal<void(TimePoint)>& signalCloudApiKeyExpiring();
+    sigc::signal<void(const std::string&)>& signalSaveFailed();
 private:
     struct Content
     {
@@ -71,6 +82,7 @@ private:
     std::unique_ptr<PlannerStorage> m_storage;
     PlannerDocument m_document;
     stapik::sync::CloudSession<PlannerDocument> m_cloudSession;
+    const stapik::time::IClock& m_clock;
     stapik::command::UndoStack m_undoStack;
 
     sigc::signal<void()> m_signalActivitiesChanged;
@@ -78,7 +90,10 @@ private:
     sigc::signal<void()> m_signalWeekPlanChanged;
     sigc::signal<void(stapik::sync::SyncStatus)> m_signalCloudStatusChanged;
     sigc::signal<void(const CloudOutcome&)> m_signalCloudOutcome;
+    sigc::signal<void(TimePoint)> m_signalCloudApiKeyExpiring;
+    sigc::signal<void(const std::string&)> m_signalSaveFailed;
     sigc::connection m_deferredPush;
+    bool m_saveFailing = false;
 
     [[nodiscard]] Content content() const;
     void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);

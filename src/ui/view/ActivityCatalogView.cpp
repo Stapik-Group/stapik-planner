@@ -4,6 +4,7 @@
 #include "../widget/catalog/ActivityCatalogItemRow.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <gtkmm/window.h>
 
@@ -112,6 +113,6 @@ void ActivityCatalogView::showActivityDialog(const int editIndex)
         dialog->hide();
     });
 
-    dialog->signal_hide().connect([dialog] { delete dialog; });
+    deleteOnHide(dialog);
     dialog->show();
 }

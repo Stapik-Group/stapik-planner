@@ -5,12 +5,11 @@
 #include "stapik/domain/IdGenerator.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/log/Log.hpp"
+#include "stapik/storage/PathText.hpp"
 
-#include <glib.h>
 #include <glibmm/main.h>
 
 #include <chrono>
-#include <thread>
 #include <utility>
 
 namespace
@@ -80,13 +79,15 @@ PlannerModel::PlannerModel() :
     PlannerModel(std::make_unique<PlannerStorage>(), stapik::sync::defaultCloudSessionHooks(CLOUD_SLOT_KEY))
 {}
 
-PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions) :
+PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync::CloudSessionHooks cloudHooks, const stapik::sync::AsyncSyncOptions& syncOptions, const stapik::time::IClock& clock) :
     m_storage(std::move(storage)),
     m_document(m_storage->load()),
-    m_cloudSession(std::move(cloudHooks), syncOptions)
+    m_cloudSession(std::move(cloudHooks), syncOptions),
+    m_clock(clock)
 {
     m_cloudSession.signalStatusChanged().connect([this](const stapik::sync::SyncStatus status) { m_signalCloudStatusChanged.emit(status); });
     m_cloudSession.signalOutcome().connect([this](const CloudOutcome& outcome) { onCloudOutcome(outcome); });
+    m_cloudSession.signalApiKeyExpiring().connect([this](const TimePoint expiresAt) { m_signalCloudApiKeyExpiring.emit(expiresAt); });
 
     if (m_cloudSession.isConnected())
         m_cloudSession.syncNow(m_document);
@@ -185,6 +186,25 @@ stapik::command::UndoStack& PlannerModel::undoStack()
     return m_undoStack;
 }
 
+std::vector<stapik::document::BackupInfo> PlannerModel::listBackups() const
+{
+    return m_storage->listBackups();
+}
+
+bool PlannerModel::restoreBackup(const stapik::document::BackupInfo& backup)
+{
+    auto loaded = m_storage->loadBackup(backup);
+    if (loaded.status != stapik::document::LoadStatus::Loaded || !loaded.document.has_value())
+    {
+        stapik::log::warning("Cannot restore the planner backup {}", stapik::storage::pathText(backup.path));
+        return false;
+    }
+
+    const auto& restored = *loaded.document;
+    execute("command.backup.restore", Content{ .settings = restored.settings, .activities = restored.activities, .weekPlan = restored.weekPlan });
+    return true;
+}
+
 bool PlannerModel::connectCloud(const CloudStorageConfig& config)
 {
     return m_cloudSession.connectWith(config, m_document);
@@ -195,30 +215,16 @@ void PlannerModel::syncCloud()
     m_cloudSession.syncNow(m_document);
 }
 
+void PlannerModel::disconnectCloud()
+{
+    m_deferredPush.disconnect();
+    m_cloudSession.disconnect();
+    m_document.cloudBaseline.reset();
+}
+
 void PlannerModel::flushCloud(const std::chrono::milliseconds timeout)
 {
-    if (!m_cloudSession.hasPendingWork())
-        return;
-
-    bool settled = false;
-    auto outcomeConnection = m_cloudSession.signalOutcome().connect([&settled](const CloudOutcome& outcome)
-    {
-        settled = outcome.state != stapik::sync::SyncState::Synchronized;
-    });
-
-    m_cloudSession.flush();
-
-    const auto deadline = std::chrono::steady_clock::now() + timeout;
-    while (!settled && m_cloudSession.hasPendingWork() && std::chrono::steady_clock::now() < deadline)
-    {
-        while (g_main_context_iteration(nullptr, FALSE))
-        {
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    outcomeConnection.disconnect();
+    m_cloudSession.flushAndWait(timeout);
 }
 
 bool PlannerModel::isCloudConnected() const
@@ -261,6 +267,16 @@ sigc::signal<void(const PlannerModel::CloudOutcome&)>& PlannerModel::signalCloud
     return m_signalCloudOutcome;
 }
 
+sigc::signal<void(PlannerModel::TimePoint)>& PlannerModel::signalCloudApiKeyExpiring()
+{
+    return m_signalCloudApiKeyExpiring;
+}
+
+sigc::signal<void(const std::string&)>& PlannerModel::signalSaveFailed()
+{
+    return m_signalSaveFailed;
+}
+
 PlannerModel::Content PlannerModel::content() const
 {
     return Content{ .settings = m_document.settings, .activities = m_document.activities, .weekPlan = m_document.weekPlan };
@@ -298,15 +314,25 @@ void PlannerModel::restoreContent(const Content& content, const bool announceWee
 
 void PlannerModel::persist()
 {
-    m_document.updatedAt = std::chrono::system_clock::now();
+    m_document.updatedAt = m_clock.now();
     saveToDisk();
     m_cloudSession.pushChange(m_document);
 }
 
 void PlannerModel::saveToDisk()
 {
-    if (!m_storage->save(m_document))
-        stapik::log::warning("Cannot save the planner to {}", m_storage->filePath().string());
+    const auto saved = m_storage->save(m_document);
+    if (saved)
+    {
+        m_saveFailing = false;
+        return;
+    }
+
+    const auto message = saved.error().message();
+    stapik::log::warning("Cannot save the planner to {}: {}", stapik::storage::pathText(m_storage->filePath()), message);
+
+    if (!std::exchange(m_saveFailing, true))
+        m_signalSaveFailed.emit(message);
 }
 
 void PlannerModel::onCloudOutcome(const CloudOutcome& outcome)

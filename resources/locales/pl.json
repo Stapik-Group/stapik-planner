@@ -28,6 +28,18 @@
   "command.slots.count": "zmiana liczby slotów",
   "cloud.conflict.header": "Zachowano wersję z chmury",
   "cloud.conflict.secondary": "Inne urządzenie zapisało nowszą wersję planera. Twoje ostatnie zmiany zostały nią zastąpione.",
+  "settings.checkForUpdates": "Sprawdzaj dostępność aktualizacji",
+  "menu.file.disconnect": "Rozłącz z chmurą",
+  "dialog.disconnect.title": "Rozłączyć z chmurą?",
+  "dialog.disconnect.message": "Klucz API i ustawienia połączenia zostaną usunięte z tego urządzenia. Planer na tym urządzeniu i w chmurze pozostanie bez zmian.",
+  "dialog.disconnect.button": "Rozłącz",
+  "cloud.plainFileSecrets": "Brak systemowego pęku kluczy, więc klucz API i fraza szyfrująca są przechowywane w pliku dostępnym tylko dla Twojego użytkownika.",
+  "cloud.apiKeyExpiring.header": "Klucz API chmury wkrótce wygaśnie",
+  "command.backup.restore": "przywrócenie kopii zapasowej",
+  "dialog.backup.restoreFailed.title": "Nie udało się przywrócić kopii zapasowej",
+  "dialog.backup.restoreFailed.text": "Plik jest nieczytelny albo zapisała go nowsza wersja planera.",
+  "dialog.save.failed.title": "Nie udało się zapisać planera",
+  "dialog.save.failed.text": "Zmiany są tylko w otwartym oknie, ale nie na dysku: {error}",
   "button.ok": "OK",
   "button.cancel": "Anuluj"
 }

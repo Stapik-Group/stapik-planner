@@ -43,4 +43,6 @@ private:
     bool onCloseRequest();
     void onCloudStatusChanged(stapik::sync::SyncStatus status);
     void onCloudOutcome(const PlannerModel::CloudOutcome& outcome);
+    void onApiKeyExpiring(PlannerModel::TimePoint expiresAt);
+    void onSaveFailed(const std::string& message);
 };
