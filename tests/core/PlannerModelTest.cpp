@@ -567,3 +567,22 @@ TEST_F(PlannerModelTest, AnOverloadedDayCannotBeCopiedOntoAFreeDay)
     EXPECT_FALSE(m_model->copyDay(Weekday::MONDAY, Weekday::TUESDAY));
     EXPECT_EQ(m_model->weekPlan()[1].totalLoad(), 0);
 }
+
+TEST_F(PlannerModelTest, ClearingADayEmptiesItAndCanBeUndone)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    auto monday = m_model->weekPlan()[0];
+    monday.slots[0] = m_model->activities()[0];
+    monday.slots[3] = m_model->activities()[0];
+    ASSERT_TRUE(m_model->updateDay(Weekday::MONDAY, monday));
+    int announcements = 0;
+    m_model->signalWeekPlanChanged().connect([&announcements] { ++announcements; });
+
+    EXPECT_TRUE(m_model->clearDay(Weekday::MONDAY));
+
+    EXPECT_TRUE(m_model->weekPlan()[0].isEmpty());
+    EXPECT_EQ(m_model->weekPlan()[0].slots.size(), 4U);
+    EXPECT_EQ(announcements, 1);
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
+}

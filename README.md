@@ -9,7 +9,7 @@ A desktop weekly activity planner for Linux and Windows, written in C++20 using 
 - **Weekly schedule grid** - seven day columns (Monday–Sunday), each with a configurable number of activity slots
 - **Activity catalog** - add, edit and delete reusable activities, each with a name and a difficulty level (Light 10%, Normal 20%, Medium 30%, Hard 50%)
 - **Daily load tracking** - a load bar per day shows total workload as a percentage; a day cannot go above 100%: once it is full its empty slots are locked, activities that no longer fit are greyed out in the slot list, and every entry of the list shows its own percentage
-- **Copy a day** - right-click a day column and choose the day to copy its plan to; the target day is replaced and the change can be undone
+- **Day context menu** - right-click a day column to copy its plan to another day (**Copy to…**, with a warning before a planned day is replaced) or to **Clear** it; both can be undone
 - **Cloud sync** - save and load data via [Stapik Cloud](https://github.com/Stapik-Group/stapik-cloud), with optimistic-concurrency conflict resolution and full version history
 - **Multilingual UI** - Polish, English and German interface with instant switching
 - **Five themes** - Classic, Classic Pink, Modern, Dark and Neoclassic, switchable live from **Settings → Settings…**; the themes and the common parts of the look are shared with the other Stapik applications

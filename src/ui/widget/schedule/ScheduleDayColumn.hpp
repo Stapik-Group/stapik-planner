@@ -23,6 +23,7 @@ public:
     [[nodiscard]] DayPlan getDayPlan() const;
     sigc::signal<void()>& signalChanged();
     sigc::signal<void(Weekday)>& signalCopyRequested();
+    sigc::signal<void()>& signalClearRequested();
     void setActivities(const std::vector<Activity>& activities);
     void setSlotCount(int newSlotCount);
 private:
@@ -34,10 +35,12 @@ private:
 
     Gtk::PopoverMenu m_contextMenu;
     Glib::RefPtr<Gio::SimpleActionGroup> m_actions;
+    Glib::RefPtr<Gio::SimpleAction> m_clearAction;
     Glib::RefPtr<Gtk::GestureClick> m_rightClick;
 
     sigc::signal<void()> m_signalChanged;
     sigc::signal<void(Weekday)> m_signalCopyRequested;
+    sigc::signal<void()> m_signalClearRequested;
 
     void initLayout();
     void initContextMenu();

@@ -50,6 +50,7 @@ public:
     [[nodiscard]] bool updateSlotCount(int newSlotCount);
     bool updateDay(Weekday weekday, DayPlan dayPlan);
     bool copyDay(Weekday from, Weekday to);
+    bool clearDay(Weekday weekday);
 
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 

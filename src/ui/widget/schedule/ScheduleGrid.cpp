@@ -66,6 +66,7 @@ void ScheduleGrid::connectCellSignals()
 
         m_cells[i]->signalChanged().connect([this, i] { onDayChanged(i); });
         m_cells[i]->signalCopyRequested().connect([this, weekday](const Weekday target) { onCopyRequested(weekday, target); });
+        m_cells[i]->signalClearRequested().connect([this, weekday] { m_model.clearDay(weekday); });
     }
 }
 

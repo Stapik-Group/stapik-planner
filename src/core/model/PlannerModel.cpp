@@ -230,6 +230,11 @@ bool PlannerModel::copyDay(const Weekday from, const Weekday to)
     return replaceDay(to, std::move(copy), "command.day.copy", true);
 }
 
+bool PlannerModel::clearDay(const Weekday weekday)
+{
+    return replaceDay(weekday, DayPlan{ weekday, m_document.settings.slots }, "command.day.clear", true);
+}
+
 bool PlannerModel::replaceDay(const Weekday weekday, DayPlan dayPlan, const char* descriptionKey, const bool announceWeekPlan)
 {
     const auto index = static_cast<std::size_t>(weekday);

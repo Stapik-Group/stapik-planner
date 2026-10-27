@@ -43,6 +43,7 @@ void ScheduleDayColumn::initContextMenu()
             m_signalCopyRequested.emit(ScheduleWeekdays::ALL[index]);
         });
     }
+    m_clearAction = m_actions->add_action("clear", [this] { m_signalClearRequested.emit(); });
     insert_action_group("day", m_actions);
 
     m_contextMenu.set_parent(*this);
@@ -66,13 +67,21 @@ Glib::RefPtr<Gio::Menu> ScheduleDayColumn::buildContextMenu() const
             targets->append(localeManager.translate(ScheduleWeekdays::FULL_KEYS[index]), std::format("day.copyTo{}", index));
     }
 
+    const auto copySection = Gio::Menu::create();
+    copySection->append_submenu(localeManager.translate("schedule.menu.copyTo"), targets);
+
+    const auto clearSection = Gio::Menu::create();
+    clearSection->append(localeManager.translate("schedule.menu.clear"), "day.clear");
+
     const auto menu = Gio::Menu::create();
-    menu->append_section(localeManager.translate("schedule.menu.copyTo"), targets);
+    menu->append_section(copySection);
+    menu->append_section(clearSection);
     return menu;
 }
 
 void ScheduleDayColumn::showContextMenu(const double x, const double y)
 {
+    m_clearAction->set_enabled(!getDayPlan().isEmpty());
     m_contextMenu.set_menu_model(buildContextMenu());
     m_contextMenu.set_pointing_to(Gdk::Rectangle(static_cast<int>(x), static_cast<int>(y), 1, 1));
     m_contextMenu.popup();
@@ -161,4 +170,9 @@ sigc::signal<void()>& ScheduleDayColumn::signalChanged()
 sigc::signal<void(Weekday)>& ScheduleDayColumn::signalCopyRequested()
 {
     return m_signalCopyRequested;
+}
+
+sigc::signal<void()>& ScheduleDayColumn::signalClearRequested()
+{
+    return m_signalClearRequested;
 }
