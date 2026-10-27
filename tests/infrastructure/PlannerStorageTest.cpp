@@ -292,3 +292,28 @@ TEST_F(PlannerStorageTest, ABackupIsRotatedAgainOnceTheIntervalHasPassed)
     EXPECT_EQ(storage.loadBackup(backups[0]).document->toJson(), third.toJson());
     EXPECT_EQ(storage.loadBackup(backups[1]).document->toJson(), first.toJson());
 }
+
+TEST_F(PlannerStorageTest, FileWithAnUnknownDifficultyIsMovedAsideInsteadOfBeingDowngraded)
+{
+    const std::string futureFile = R"({ "schemaVersion": 1, "document": { "activities": [ { "name": "Odd", "difficulty": "extreme" } ] } })";
+    writeText(m_filePath, futureFile);
+    const PlannerStorage storage(m_filePath);
+
+    const auto document = storage.load();
+
+    EXPECT_EQ(document.toJson(), PlannerDocument::createDefault().toJson());
+    const auto quarantined = filesWithPrefix("planner.json.corrupt-");
+    ASSERT_EQ(quarantined.size(), 1U);
+    EXPECT_EQ(readText(quarantined.front()), futureFile);
+}
+
+TEST_F(PlannerStorageTest, FileWithAnUnknownWeekdayIsMovedAsideInsteadOfOverwritingMonday)
+{
+    writeText(m_filePath, R"({ "schemaVersion": 1, "document": { "weekPlan": [ { "weekday": "funday", "slots": [] } ] } })");
+    const PlannerStorage storage(m_filePath);
+
+    const auto document = storage.load();
+
+    EXPECT_EQ(document.toJson(), PlannerDocument::createDefault().toJson());
+    EXPECT_EQ(filesWithPrefix("planner.json.corrupt-").size(), 1U);
+}

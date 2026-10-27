@@ -119,3 +119,18 @@ TEST_F(PlannerSyncCompatibilityTest, UnreadableCloudDocumentKeepsTheLocalOne)
     EXPECT_EQ(outcome.document.toJson(), local.toJson());
     EXPECT_EQ(m_fake.saveCalls, 0);
 }
+
+TEST_F(PlannerSyncCompatibilityTest, CloudDocumentWithAnUnknownDifficultyIsNotAdoptedAndNotOverwritten)
+{
+    m_fake.stored = CloudDocument{
+        .content = SyncEnvelope{ .lastUpdate = at(500), .payload = { { "activities", nlohmann::json::array({ { { "name", "Odd" }, { "difficulty", "extreme" } } }) } } }.toJson(),
+        .updatedAt = at(900)
+    };
+    const auto local = makeSampleDocument(100);
+
+    const auto outcome = m_coordinator.resolveOnConnect(local);
+
+    EXPECT_EQ(outcome.state, SyncState::RemoteUnreadable);
+    EXPECT_EQ(outcome.document.toJson(), local.toJson());
+    EXPECT_EQ(m_fake.saveCalls, 0);
+}

@@ -26,9 +26,6 @@ public:
 
     Gtk::PopoverMenuBar& getMenuBar();
 private:
-    static constexpr int MIN_SLOT_OPTION = 3;
-    static constexpr int MAX_SLOT_OPTION = 6;
-
     Gtk::ApplicationWindow& m_window;
     PlannerModel& m_model;
     MenuActionHandler m_actionHandler;

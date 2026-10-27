@@ -58,7 +58,7 @@ void MainMenu::buildRestoreBackupMenu(Gio::Menu& fileMenu)
 void MainMenu::initSlotCountAction()
 {
     std::vector<stapik::ui::RadioOption<int>> options;
-    for (int slotCount = MIN_SLOT_OPTION; slotCount <= MAX_SLOT_OPTION; ++slotCount)
+    for (int slotCount = Settings::MIN_SLOTS; slotCount <= Settings::MAX_SLOTS; ++slotCount)
         options.push_back({ .value = slotCount, .id = std::to_string(slotCount) });
 
     m_slotCountAction = std::make_unique<stapik::ui::RadioAction<int>>(
@@ -75,7 +75,7 @@ void MainMenu::initSlotCountAction()
 void MainMenu::buildSlotCountMenu(Gio::Menu& settingsMenu) const
 {
     const auto slotCountMenu = Gio::Menu::create();
-    for (int slotCount = MIN_SLOT_OPTION; slotCount <= MAX_SLOT_OPTION; ++slotCount)
+    for (int slotCount = Settings::MIN_SLOTS; slotCount <= Settings::MAX_SLOTS; ++slotCount)
         slotCountMenu->append(std::to_string(slotCount), m_slotCountAction->detailedAction(slotCount));
 
     settingsMenu.append_submenu(LocaleManager::instance().translate("menu.settings.slots"), slotCountMenu);
