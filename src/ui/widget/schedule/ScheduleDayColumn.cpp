@@ -50,7 +50,7 @@ void ScheduleDayColumn::initContextMenu()
         });
     }
     m_clearAction = m_actions->add_action("clear", [this] { m_signalClearRequested.emit(); });
-    insert_action_group("day", m_actions);
+    insert_action_group("dayplan", m_actions);
 
     m_contextMenu.set_parent(*this);
     m_contextMenu.set_has_arrow(false);
@@ -70,14 +70,14 @@ Glib::RefPtr<Gio::Menu> ScheduleDayColumn::buildContextMenu() const
     for (std::size_t index = 0; index < ScheduleWeekdays::ALL.size(); ++index)
     {
         if (ScheduleWeekdays::ALL[index] != m_weekday)
-            targets->append(localeManager.translate(ScheduleWeekdays::FULL_KEYS[index]), std::format("day.copyTo{}", index));
+            targets->append(localeManager.translate(ScheduleWeekdays::FULL_KEYS[index]), std::format("dayplan.copyTo{}", index));
     }
 
     const auto copySection = Gio::Menu::create();
     copySection->append_submenu(localeManager.translate("schedule.menu.copyTo"), targets);
 
     const auto clearSection = Gio::Menu::create();
-    clearSection->append(localeManager.translate("schedule.menu.clear"), "day.clear");
+    clearSection->append(localeManager.translate("schedule.menu.clear"), "dayplan.clear");
 
     const auto menu = Gio::Menu::create();
     menu->append_section(copySection);
