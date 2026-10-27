@@ -7,11 +7,9 @@
 #include "stapik/log/Log.hpp"
 #include "stapik/storage/PathText.hpp"
 
-#include <glib.h>
 #include <glibmm/main.h>
 
 #include <chrono>
-#include <thread>
 #include <utility>
 
 namespace
@@ -198,28 +196,7 @@ void PlannerModel::syncCloud()
 
 void PlannerModel::flushCloud(const std::chrono::milliseconds timeout)
 {
-    if (!m_cloudSession.hasPendingWork())
-        return;
-
-    bool settled = false;
-    auto outcomeConnection = m_cloudSession.signalOutcome().connect([&settled](const CloudOutcome& outcome)
-    {
-        settled = outcome.state != stapik::sync::SyncState::Synchronized;
-    });
-
-    m_cloudSession.flush();
-
-    const auto deadline = std::chrono::steady_clock::now() + timeout;
-    while (!settled && m_cloudSession.hasPendingWork() && std::chrono::steady_clock::now() < deadline)
-    {
-        while (g_main_context_iteration(nullptr, FALSE))
-        {
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-    outcomeConnection.disconnect();
+    m_cloudSession.flushAndWait(timeout);
 }
 
 bool PlannerModel::isCloudConnected() const
