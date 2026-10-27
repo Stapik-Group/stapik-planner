@@ -70,5 +70,5 @@ void MainWindow::onCloudOutcome(const PlannerModel::CloudOutcome& outcome)
         return;
 
     const auto& localeManager = LocaleManager::instance();
-    showMessageDialog(*this, localeManager.translate("cloud.conflict.header"), localeManager.translate("cloud.conflict.secondary"), Gtk::MessageType::WARNING);
+    showMessageDialog(*this, localeManager.translate("cloud.conflict.header"), localeManager.translate("cloud.conflict.secondary"));
 }

@@ -20,7 +20,7 @@ A desktop weekly activity planner for Linux, written in C++20 using GTK4/gtkmm. 
 
 - `gtkmm-4.0`
 - `libcurl`
-- [`stapik-common`](https://github.com/Stapik-Group/stapik-common) v1.3.2+ (fetched automatically via CMake FetchContent)
+- [`stapik-common`](https://github.com/Stapik-Group/stapik-common) v1.6.0+ (fetched automatically via CMake FetchContent)
 - `nlohmann/json` (fetched automatically via CMake FetchContent, transitively provided by `stapik-common`)
 
 On Ubuntu/Debian:

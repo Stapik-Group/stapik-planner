@@ -81,7 +81,7 @@ PlannerDocument PlannerStorage::load() const
     return PlannerDocument::createDefault();
 }
 
-bool PlannerStorage::save(const PlannerDocument& document) const
+stapik::storage::FileResult PlannerStorage::save(const PlannerDocument& document) const
 {
     return m_documentFile.save(document);
 }

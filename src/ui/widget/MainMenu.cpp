@@ -70,6 +70,5 @@ void MainMenu::onSlotCountSelected(const int slotCount)
     showMessageDialog(
         m_window,
         localeManager.translate("dialog.slots.dataLost.title"),
-        localeManager.translate("dialog.slots.dataLost.text"),
-        Gtk::MessageType::WARNING);
+        localeManager.translate("dialog.slots.dataLost.text"));
 }

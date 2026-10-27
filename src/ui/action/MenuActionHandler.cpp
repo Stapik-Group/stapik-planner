@@ -45,7 +45,7 @@ void MenuActionHandler::handleConfirmedConfig(const CloudStorageConfig& config)
 
     if (!m_model.connectCloud(config))
     {
-        showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), "", Gtk::MessageType::ERROR);
+        showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), "");
         return;
     }
 
@@ -67,14 +67,17 @@ void MenuActionHandler::showConnectFeedback(const PlannerModel::CloudOutcome& ou
     {
         case SyncState::Synchronized:
         case SyncState::ServerWon:
-            showMessageDialog(m_window, localeManager.translate("cloud.connected"), localeManager.translate("cloud.connected.secondary"), Gtk::MessageType::INFO);
+            showMessageDialog(m_window, localeManager.translate("cloud.connected"), localeManager.translate("cloud.connected.secondary"));
             break;
         case SyncState::OfflineKeptLocal:
         case SyncState::RemoteUnreadable:
-            showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), outcome.message, Gtk::MessageType::ERROR);
+        case SyncState::AuthRejected:
+        case SyncState::DecryptionFailed:
+        case SyncState::DocumentTooLarge:
+            showMessageDialog(m_window, localeManager.translate("cloud.failed.header"), outcome.message);
             break;
         case SyncState::LostRaceAcceptedServer:
-            // The window explains this one to the user.
+        case SyncState::LostRaceKeptLocal:
             break;
     }
 }

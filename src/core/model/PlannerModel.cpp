@@ -5,6 +5,7 @@
 #include "stapik/domain/IdGenerator.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/log/Log.hpp"
+#include "stapik/storage/PathText.hpp"
 
 #include <glib.h>
 #include <glibmm/main.h>
@@ -305,8 +306,8 @@ void PlannerModel::persist()
 
 void PlannerModel::saveToDisk()
 {
-    if (!m_storage->save(m_document))
-        stapik::log::warning("Cannot save the planner to {}", m_storage->filePath().string());
+    if (const auto saved = m_storage->save(m_document); !saved)
+        stapik::log::warning("Cannot save the planner to {}: {}", stapik::storage::pathText(m_storage->filePath()), saved.error().message());
 }
 
 void PlannerModel::onCloudOutcome(const CloudOutcome& outcome)

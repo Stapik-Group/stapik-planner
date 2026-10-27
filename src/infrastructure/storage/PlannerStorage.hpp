@@ -3,6 +3,7 @@
 #include "../../core/model/PlannerDocument.hpp"
 
 #include "stapik/document/DocumentFile.hpp"
+#include "stapik/storage/FileError.hpp"
 
 #include <filesystem>
 #include <string_view>
@@ -16,7 +17,7 @@ public:
     explicit PlannerStorage(std::filesystem::path filePath);
 
     [[nodiscard]] PlannerDocument load() const;
-    [[nodiscard]] bool save(const PlannerDocument& document) const;
+    [[nodiscard]] stapik::storage::FileResult save(const PlannerDocument& document) const;
     [[nodiscard]] const std::filesystem::path& filePath() const;
 
     [[nodiscard]] static std::filesystem::path defaultFilePath();

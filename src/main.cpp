@@ -9,12 +9,20 @@
 #include "stapik/ui/menu/StandardMenu.hpp"
 #include "stapik/ui/style/AppStyleProvider.hpp"
 
+#include <filesystem>
+#include <vector>
+
 int main(const int argc, char *argv[])
 {
     const auto appInfo = makePlannerAppInfo();
     stapik::app::AppContext::initialize(appInfo);
 
-    if (const auto singleInstanceGuard = stapik::app::SingleInstanceGuard::acquire(appInfo.applicationId, appInfo.displayName); singleInstanceGuard == nullptr)
+    const auto singleInstanceGuard = stapik::app::SingleInstanceGuard::acquire(
+        appInfo.applicationId,
+        appInfo.displayName,
+        {},
+        [](const std::vector<std::filesystem::path>&) {});
+    if (singleInstanceGuard == nullptr)
         return EXIT_SUCCESS;
 
     const auto app = Gtk::Application::create(appInfo.applicationId);
