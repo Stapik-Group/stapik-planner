@@ -9,6 +9,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 class ActivityCatalogView : public Gtk::Box
 {
@@ -30,6 +31,7 @@ private:
     void onEditRequested(const std::string& id);
     void onDeleteRequested(const std::string& id) const;
 
+    [[nodiscard]] std::vector<std::string> namesExcept(const std::optional<std::size_t>& index) const;
     void showActivityDialog(const std::optional<std::string>& editedId);
     void saveEditedActivity(Gtk::Window& window, const std::string& id, Activity activity);
 };

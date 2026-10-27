@@ -85,6 +85,20 @@ void ActivityCatalogView::onDeleteRequested(const std::string& id) const
         m_model.removeActivity(*index);
 }
 
+std::vector<std::string> ActivityCatalogView::namesExcept(const std::optional<std::size_t>& index) const
+{
+    std::vector<std::string> names;
+    const auto& activities = m_model.activities();
+
+    for (std::size_t position = 0; position < activities.size(); ++position)
+    {
+        if (position != index)
+            names.push_back(activities[position].name);
+    }
+
+    return names;
+}
+
 void ActivityCatalogView::showActivityDialog(const std::optional<std::string>& editedId)
 {
     auto* window = dynamic_cast<Gtk::Window*>(get_root());
@@ -96,8 +110,8 @@ void ActivityCatalogView::showActivityDialog(const std::optional<std::string>& e
         return;
 
     ActivityDialog* dialog = editedIndex.has_value()
-        ? new ActivityDialog(*window, m_model.activities()[*editedIndex])
-        : new ActivityDialog(*window);
+        ? new ActivityDialog(*window, m_model.activities()[*editedIndex], namesExcept(editedIndex))
+        : new ActivityDialog(*window, namesExcept(std::nullopt));
 
     dialog->signal_response().connect([this, window, dialog, editedId](const int responseId)
     {
