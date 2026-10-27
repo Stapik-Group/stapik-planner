@@ -52,6 +52,11 @@
     background-color: #c8321e;
 }
 
+.drag-over {
+    outline: 2px solid @stapik_action;
+    outline-offset: -2px;
+}
+
 .load-bar block.empty {
     background-color: transparent;
     border: none;

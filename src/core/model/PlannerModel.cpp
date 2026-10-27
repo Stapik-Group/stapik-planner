@@ -271,6 +271,49 @@ bool PlannerModel::clearDay(const Weekday weekday)
     return replaceDay(weekday, DayPlan{ weekday, m_document.settings.slots }, "command.day.clear", true);
 }
 
+bool PlannerModel::assignSlot(const Weekday day, const std::size_t slotIndex, const std::string& activityId)
+{
+    const auto activityIndex = findActivity(activityId);
+    const auto dayIndex = static_cast<std::size_t>(day);
+    if (!activityIndex.has_value() || dayIndex >= m_document.weekPlan.size() || slotIndex >= m_document.weekPlan[dayIndex].slots.size())
+        return false;
+
+    DayPlan changed = m_document.weekPlan[dayIndex];
+    changed.slots[slotIndex] = m_document.activities[*activityIndex];
+
+    return replaceDay(day, std::move(changed), "command.slot.assign", true);
+}
+
+bool PlannerModel::transferSlot(const Weekday fromDay, const std::size_t fromSlot, const Weekday toDay, const std::size_t toSlot, const bool copy)
+{
+    const auto fromIndex = static_cast<std::size_t>(fromDay);
+    const auto toIndex = static_cast<std::size_t>(toDay);
+    if (fromIndex >= m_document.weekPlan.size() || toIndex >= m_document.weekPlan.size()
+        || fromSlot >= m_document.weekPlan[fromIndex].slots.size() || toSlot >= m_document.weekPlan[toIndex].slots.size()
+        || !m_document.weekPlan[fromIndex].slots[fromSlot].has_value())
+    {
+        return false;
+    }
+
+    if (fromIndex == toIndex && fromSlot == toSlot)
+        return true;
+
+    auto after = content();
+    auto& source = after.weekPlan[fromIndex].slots[fromSlot];
+    auto& target = after.weekPlan[toIndex].slots[toSlot];
+
+    if (copy)
+        target = source;
+    else
+        std::swap(source, target);
+
+    if (raisesLoadAboveLimit(m_document.weekPlan[fromIndex], after.weekPlan[fromIndex]) || raisesLoadAboveLimit(m_document.weekPlan[toIndex], after.weekPlan[toIndex]))
+        return false;
+
+    execute(copy ? "command.slot.copy" : "command.slot.move", std::move(after));
+    return true;
+}
+
 bool PlannerModel::replaceDay(const Weekday weekday, DayPlan dayPlan, const char* descriptionKey, const bool announceWeekPlan)
 {
     const auto index = static_cast<std::size_t>(weekday);

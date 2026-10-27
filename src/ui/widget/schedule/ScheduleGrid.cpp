@@ -4,6 +4,7 @@
 #include "stapik/ui/dialog/ConfirmDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
+#include <glibmm/main.h>
 #include <gtkmm/window.h>
 
 ScheduleGrid::ScheduleGrid(PlannerModel& model) :
@@ -67,6 +68,7 @@ void ScheduleGrid::connectCellSignals()
         m_cells[i]->signalChanged().connect([this, i] { onDayChanged(i); });
         m_cells[i]->signalCopyRequested().connect([this, weekday](const Weekday target) { onCopyRequested(weekday, target); });
         m_cells[i]->signalClearRequested().connect([this, weekday] { m_model.clearDay(weekday); });
+        m_cells[i]->signalDropRequested().connect([this, weekday](const DragPayload& payload, const std::size_t slotIndex) { onDropRequested(weekday, slotIndex, payload); });
     }
 }
 
@@ -127,5 +129,25 @@ void ScheduleGrid::copyDay(const Weekday from, const Weekday to)
     {
         const auto& localeManager = LocaleManager::instance();
         showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.copy"));
+    }
+}
+
+void ScheduleGrid::onDropRequested(const Weekday target, const std::size_t slotIndex, const DragPayload& payload)
+{
+    Glib::signal_idle().connect_once([this, target, slotIndex, payload] { applyDrop(target, slotIndex, payload); });
+}
+
+void ScheduleGrid::applyDrop(const Weekday target, const std::size_t slotIndex, const DragPayload& payload)
+{
+    const bool applied = payload.kind == DragPayload::Kind::Activity
+        ? m_model.assignSlot(target, slotIndex, payload.activityId)
+        : m_model.transferSlot(payload.day, payload.slot, target, slotIndex, payload.copy);
+    if (applied)
+        return;
+
+    if (auto* window = dynamic_cast<Gtk::Window*>(get_root()))
+    {
+        const auto& localeManager = LocaleManager::instance();
+        showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.slot"));
     }
 }

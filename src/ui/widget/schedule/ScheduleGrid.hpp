@@ -25,4 +25,6 @@ private:
     void onDayChanged(int index);
     void onCopyRequested(Weekday from, Weekday to);
     void copyDay(Weekday from, Weekday to);
+    void onDropRequested(Weekday target, std::size_t slotIndex, const DragPayload& payload);
+    void applyDrop(Weekday target, std::size_t slotIndex, const DragPayload& payload);
 };

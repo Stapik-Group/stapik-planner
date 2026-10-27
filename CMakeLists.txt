@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(stapikcommon)
 
 add_library(stapikplannercore STATIC
         src/core/model/ActivityName.cpp
+        src/core/model/DragPayload.cpp
         src/core/model/PlannerDocument.cpp
         src/core/model/PlannerModel.cpp
         src/infrastructure/storage/PlannerStorage.cpp

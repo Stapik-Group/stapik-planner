@@ -58,6 +58,8 @@ public:
     bool updateDay(Weekday weekday, DayPlan dayPlan);
     bool copyDay(Weekday from, Weekday to);
     bool clearDay(Weekday weekday);
+    bool assignSlot(Weekday day, std::size_t slotIndex, const std::string& activityId);
+    bool transferSlot(Weekday fromDay, std::size_t fromSlot, Weekday toDay, std::size_t toSlot, bool copy);
 
     [[nodiscard]] std::vector<PlanSummary> plans() const;
     [[nodiscard]] const std::string& activePlanId() const;

@@ -24,13 +24,19 @@ void ScheduleDayColumn::initLayout()
     set_vexpand(true);
     add_css_class("todo-cell");
 
-    for (auto& slot : m_slots)
+    for (std::size_t index = 0; index < m_slots.size(); ++index)
     {
-        slot.signalChanged().connect([this] { onSlotChanged(); });
-        append(slot);
+        wireSlot(index);
+        append(m_slots[index]);
     }
 
     append(m_loadBar);
+}
+
+void ScheduleDayColumn::wireSlot(const std::size_t index)
+{
+    m_slots[index].signalChanged().connect([this] { onSlotChanged(); });
+    m_slots[index].signalDropped().connect([this, index](const DragPayload& payload) { m_signalDropRequested.emit(payload, index); });
 }
 
 void ScheduleDayColumn::initContextMenu()
@@ -99,7 +105,10 @@ void ScheduleDayColumn::setDayPlan(const DayPlan& dayPlan)
     m_suppressChangeSignal = true;
 
     for (size_t i = 0; i < m_slots.size() && i < dayPlan.slots.size(); ++i)
+    {
+        m_slots[i].setPosition(dayPlan.weekday, i);
         m_slots[i].setSelected(dayPlan.slots[i]);
+    }
 
     onSlotChanged();
     m_suppressChangeSignal = false;
@@ -123,7 +132,7 @@ void ScheduleDayColumn::setSlotCount(const int newSlotCount)
         m_slots.resize(static_cast<std::size_t>(newSlotCount));
         for (std::size_t i = oldSize; i < m_slots.size(); ++i)
         {
-            m_slots[i].signalChanged().connect([this] { onSlotChanged(); });
+            wireSlot(i);
             append(m_slots[i]);
         }
         append(m_loadBar);
@@ -175,4 +184,9 @@ sigc::signal<void(Weekday)>& ScheduleDayColumn::signalCopyRequested()
 sigc::signal<void()>& ScheduleDayColumn::signalClearRequested()
 {
     return m_signalClearRequested;
+}
+
+sigc::signal<void(const DragPayload&, std::size_t)>& ScheduleDayColumn::signalDropRequested()
+{
+    return m_signalDropRequested;
 }

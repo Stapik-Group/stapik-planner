@@ -1,6 +1,7 @@
 #include "ScheduleDaySlotContainer.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 
+#include <glibmm/value.h>
 #include <gtkmm/label.h>
 
 #include <format>
@@ -24,6 +25,7 @@ void ScheduleDaySlotContainer::initLayout()
     m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(getSelected()); });
 
     initListFactory();
+    initDragAndDrop();
 
     set_margin(2);
     append(m_dropDown);
@@ -43,6 +45,68 @@ void ScheduleDaySlotContainer::initListFactory()
     factory->signal_unbind().connect(sigc::mem_fun(*this, &ScheduleDaySlotContainer::unbindItem));
 
     m_dropDown.set_list_factory(factory);
+}
+
+void ScheduleDaySlotContainer::initDragAndDrop()
+{
+    m_dragSource = Gtk::DragSource::create();
+    m_dragSource->set_actions(Gdk::DragAction::MOVE | Gdk::DragAction::COPY);
+    m_dragSource->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    m_dragSource->signal_prepare().connect([this](double, double) { return prepareDrag(); }, false);
+    add_controller(m_dragSource);
+
+    m_dropTarget = Gtk::DropTarget::create(Glib::Value<Glib::ustring>::value_type(), Gdk::DragAction::MOVE | Gdk::DragAction::COPY);
+    m_dropTarget->signal_drop().connect(sigc::mem_fun(*this, &ScheduleDaySlotContainer::onDrop), false);
+    m_dropTarget->signal_enter().connect([this](double, double)
+    {
+        add_css_class("drag-over");
+        return Gdk::DragAction::MOVE;
+    }, false);
+    m_dropTarget->signal_leave().connect([this] { remove_css_class("drag-over"); });
+    add_controller(m_dropTarget);
+}
+
+Glib::RefPtr<Gdk::ContentProvider> ScheduleDaySlotContainer::prepareDrag() const
+{
+    if (!getSelected().has_value())
+        return {};
+
+    const bool copy = (m_dragSource->get_current_event_state() & Gdk::ModifierType::CONTROL_MASK) == Gdk::ModifierType::CONTROL_MASK;
+
+    Glib::Value<Glib::ustring> value;
+    value.init(Glib::Value<Glib::ustring>::value_type());
+    value.set(DragPayload::forSlot(m_weekday, m_index, copy).serialize());
+    return Gdk::ContentProvider::create(value);
+}
+
+bool ScheduleDaySlotContainer::onDrop(const Glib::ValueBase& value, double, double)
+{
+    remove_css_class("drag-over");
+
+    if (G_VALUE_TYPE(value.gobj()) != G_TYPE_STRING)
+        return false;
+
+    const gchar* text = g_value_get_string(value.gobj());
+    if (text == nullptr)
+        return false;
+
+    const auto payload = DragPayload::deserialize(text);
+    if (!payload.has_value())
+        return false;
+
+    m_signalDropped.emit(*payload);
+    return true;
+}
+
+void ScheduleDaySlotContainer::setPosition(const Weekday weekday, const std::size_t index)
+{
+    m_weekday = weekday;
+    m_index = index;
+}
+
+sigc::signal<void(const DragPayload&)>& ScheduleDaySlotContainer::signalDropped()
+{
+    return m_signalDropped;
 }
 
 void ScheduleDaySlotContainer::bindItem(const Glib::RefPtr<Gtk::ListItem>& item)

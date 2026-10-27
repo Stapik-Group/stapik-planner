@@ -1,10 +1,31 @@
 #include "ActivityCatalogItemRow.hpp"
 
+#include "../../../core/model/DragPayload.hpp"
+
 #include "stapik/locale/LocaleManager.hpp"
 
-ActivityCatalogItemRow::ActivityCatalogItemRow(const Activity &activity) : Box(Gtk::Orientation::HORIZONTAL, 8)
+#include <gdkmm/contentprovider.h>
+#include <glibmm/value.h>
+
+ActivityCatalogItemRow::ActivityCatalogItemRow(const Activity &activity) : Box(Gtk::Orientation::HORIZONTAL, 8),
+    m_activityId(activity.id)
 {
     initLayout(activity);
+    initDragSource();
+}
+
+void ActivityCatalogItemRow::initDragSource()
+{
+    m_dragSource = Gtk::DragSource::create();
+    m_dragSource->set_actions(Gdk::DragAction::COPY | Gdk::DragAction::MOVE);
+    m_dragSource->signal_prepare().connect([this](double, double)
+    {
+        Glib::Value<Glib::ustring> value;
+        value.init(Glib::Value<Glib::ustring>::value_type());
+        value.set(DragPayload::forActivity(m_activityId).serialize());
+        return Gdk::ContentProvider::create(value);
+    }, false);
+    add_controller(m_dragSource);
 }
 
 void ActivityCatalogItemRow::initLayout(const Activity &activity)

@@ -733,3 +733,87 @@ TEST_F(PlannerModelTest, PlansSurviveARestart)
     ASSERT_EQ(m_model->plans().size(), 2U);
     EXPECT_EQ(m_model->activePlanName(), "Holiday");
 }
+
+TEST_F(PlannerModelTest, AssigningAnActivityFillsTheSlotWithACopyAndCanBeUndone)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto gymId = m_model->activities()[0].id;
+
+    ASSERT_TRUE(m_model->assignSlot(Weekday::WEDNESDAY, 2, gymId));
+
+    ASSERT_TRUE(m_model->weekPlan()[2].slots[2].has_value());
+    EXPECT_EQ(m_model->weekPlan()[2].slots[2]->id, gymId);
+    EXPECT_TRUE(m_model->undoStack().undo());
+    EXPECT_FALSE(m_model->weekPlan()[2].slots[2].has_value());
+}
+
+TEST_F(PlannerModelTest, AssigningIsRefusedForAnUnknownActivityABadSlotOrAFullDay)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto gymId = m_model->activities()[0].id;
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 0, gymId));
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 1, gymId));
+
+    EXPECT_FALSE(m_model->assignSlot(Weekday::MONDAY, 2, gymId));
+    EXPECT_FALSE(m_model->assignSlot(Weekday::MONDAY, 2, "missing"));
+    EXPECT_FALSE(m_model->assignSlot(Weekday::TUESDAY, 99, gymId));
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
+}
+
+TEST_F(PlannerModelTest, MovingASlotToAnotherDayEmptiesTheSource)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 0, m_model->activities()[0].id));
+
+    ASSERT_TRUE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::THURSDAY, 1, false));
+
+    EXPECT_FALSE(m_model->weekPlan()[0].slots[0].has_value());
+    ASSERT_TRUE(m_model->weekPlan()[3].slots[1].has_value());
+    EXPECT_EQ(m_model->weekPlan()[3].slots[1]->name, "Gym");
+}
+
+TEST_F(PlannerModelTest, MovingOntoATakenSlotSwapsTheTwoAndCopyingReplacesTheTarget)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 0, m_model->activities()[0].id));
+    ASSERT_TRUE(m_model->assignSlot(Weekday::TUESDAY, 0, m_model->activities()[1].id));
+
+    ASSERT_TRUE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::TUESDAY, 0, false));
+    EXPECT_EQ(m_model->weekPlan()[0].slots[0]->name, "Reading");
+    EXPECT_EQ(m_model->weekPlan()[1].slots[0]->name, "Gym");
+
+    ASSERT_TRUE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::TUESDAY, 0, true));
+    EXPECT_EQ(m_model->weekPlan()[0].slots[0]->name, "Reading");
+    EXPECT_EQ(m_model->weekPlan()[1].slots[0]->name, "Reading");
+}
+
+TEST_F(PlannerModelTest, CopyingASlotKeepsTheSourceAndRespectsTheLoadLimit)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto gymId = m_model->activities()[0].id;
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 0, gymId));
+    ASSERT_TRUE(m_model->assignSlot(Weekday::TUESDAY, 0, gymId));
+    ASSERT_TRUE(m_model->assignSlot(Weekday::TUESDAY, 1, gymId));
+
+    EXPECT_FALSE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::TUESDAY, 2, true));
+    EXPECT_FALSE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::TUESDAY, 2, false));
+    EXPECT_TRUE(m_model->weekPlan()[0].slots[0].has_value());
+    EXPECT_FALSE(m_model->weekPlan()[1].slots[2].has_value());
+
+    EXPECT_TRUE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::WEDNESDAY, 0, true));
+    EXPECT_TRUE(m_model->weekPlan()[0].slots[0].has_value());
+    EXPECT_TRUE(m_model->weekPlan()[2].slots[0].has_value());
+}
+
+TEST_F(PlannerModelTest, TransferringFromAnEmptySlotOrOntoItselfChangesNothing)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    ASSERT_TRUE(m_model->assignSlot(Weekday::MONDAY, 0, m_model->activities()[0].id));
+    const auto depth = m_model->undoStack().undoDepth();
+
+    EXPECT_FALSE(m_model->transferSlot(Weekday::MONDAY, 1, Weekday::TUESDAY, 0, false));
+    EXPECT_TRUE(m_model->transferSlot(Weekday::MONDAY, 0, Weekday::MONDAY, 0, false));
+
+    EXPECT_EQ(m_model->undoStack().undoDepth(), depth);
+}

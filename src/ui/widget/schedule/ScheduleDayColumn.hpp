@@ -24,6 +24,7 @@ public:
     sigc::signal<void()>& signalChanged();
     sigc::signal<void(Weekday)>& signalCopyRequested();
     sigc::signal<void()>& signalClearRequested();
+    sigc::signal<void(const DragPayload&, std::size_t)>& signalDropRequested();
     void setActivities(const std::vector<Activity>& activities);
     void setSlotCount(int newSlotCount);
 private:
@@ -41,9 +42,11 @@ private:
     sigc::signal<void()> m_signalChanged;
     sigc::signal<void(Weekday)> m_signalCopyRequested;
     sigc::signal<void()> m_signalClearRequested;
+    sigc::signal<void(const DragPayload&, std::size_t)> m_signalDropRequested;
 
     void initLayout();
     void initContextMenu();
+    void wireSlot(std::size_t index);
     void showContextMenu(double x, double y);
     [[nodiscard]] Glib::RefPtr<Gio::Menu> buildContextMenu() const;
     void onSlotChanged();
