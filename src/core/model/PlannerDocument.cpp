@@ -1,10 +1,12 @@
 #include "PlannerDocument.hpp"
 
 #include "stapik/domain/IdGenerator.hpp"
+#include "stapik/log/Log.hpp"
 #include "stapik/sync/Timestamp.hpp"
 
 #include <algorithm>
 #include <cstddef>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -40,10 +42,15 @@ namespace
 
     Activity activityFromJson(const nlohmann::json& json)
     {
+        const auto difficultyText = json.at("difficulty").get<std::string>();
+        const auto difficulty = Activity::deserializeDifficulty(difficultyText);
+        if (!difficulty.has_value())
+            throw std::invalid_argument(std::format("Unknown difficulty \"{}\"", difficultyText));
+
         return Activity{
             .id = json.value("id", std::string{}),
             .name = json.at("name").get<std::string>(),
-            .difficulty = Activity::deserializeDifficulty(json.at("difficulty").get<std::string>())
+            .difficulty = *difficulty
         };
     }
 
@@ -125,7 +132,10 @@ namespace
             : findActivityById(activities, storedSlot.id);
 
         if (activity == nullptr)
+        {
+            stapik::log::warning("The planned activity \"{}\" is not in the catalog, its slot is dropped", storedSlot.name);
             return std::nullopt;
+        }
 
         return *activity;
     }
@@ -202,8 +212,12 @@ namespace
 
         for (const auto& dayJson : json.at("weekPlan"))
         {
-            const auto weekday = DayPlan::deserializeWeekday(dayJson.at("weekday").get<std::string>());
-            weekPlan[static_cast<std::size_t>(weekday)].slots = slotsFromJson(dayJson.at("slots"), slotsCount, activities);
+            const auto weekdayText = dayJson.at("weekday").get<std::string>();
+            const auto weekday = DayPlan::deserializeWeekday(weekdayText);
+            if (!weekday.has_value())
+                throw std::invalid_argument(std::format("Unknown weekday \"{}\"", weekdayText));
+
+            weekPlan[static_cast<std::size_t>(*weekday)].slots = slotsFromJson(dayJson.at("slots"), slotsCount, activities);
         }
 
         return weekPlan;

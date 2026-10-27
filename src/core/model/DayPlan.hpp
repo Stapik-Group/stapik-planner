@@ -60,14 +60,15 @@ struct DayPlan
         return "monday";
     }
 
-    static Weekday deserializeWeekday(const std::string& str)
+    static std::optional<Weekday> deserializeWeekday(const std::string& str)
     {
+        if (str == "monday") return Weekday::MONDAY;
         if (str == "tuesday") return Weekday::TUESDAY;
         if (str == "wednesday") return Weekday::WEDNESDAY;
         if (str == "thursday") return Weekday::THURSDAY;
         if (str == "friday") return Weekday::FRIDAY;
         if (str == "saturday") return Weekday::SATURDAY;
         if (str == "sunday") return Weekday::SUNDAY;
-        return Weekday::MONDAY;
+        return std::nullopt;
     }
 };

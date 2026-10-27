@@ -147,16 +147,33 @@ TEST(PlannerDocumentTest, SlotsAreTruncatedOrPaddedToTheSlotCount)
     EXPECT_FALSE(document.weekPlan[1].slots[2].has_value());
 }
 
-TEST(PlannerDocumentTest, UnknownDifficultyFallsBackToNormal)
+TEST(PlannerDocumentTest, UnknownDifficultyMakesTheDocumentUnreadableInsteadOfDowngradingIt)
 {
     const nlohmann::json json = {
         { "activities", nlohmann::json::array({ { { "name", "Odd" }, { "difficulty", "extreme" } } }) }
     };
 
-    const auto document = PlannerDocument::fromJson(json);
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson(json), std::invalid_argument);
+}
 
-    ASSERT_EQ(document.activities.size(), 1U);
-    EXPECT_EQ(document.activities[0].difficulty, Difficulty::NORMAL);
+TEST(PlannerDocumentTest, UnknownWeekdayMakesTheDocumentUnreadableInsteadOfOverwritingMonday)
+{
+    const nlohmann::json json = {
+        { "weekPlan", nlohmann::json::array({
+            { { "weekday", "funday" }, { "slots", nlohmann::json::array() } }
+        }) }
+    };
+
+    EXPECT_THROW(std::ignore = PlannerDocument::fromJson(json), std::invalid_argument);
+}
+
+TEST(PlannerDocumentTest, EveryDifficultyAndWeekdayWrittenByTheDocumentIsReadBack)
+{
+    for (const auto difficulty : { Difficulty::LIGHT, Difficulty::NORMAL, Difficulty::MEDIUM, Difficulty::HARD })
+        EXPECT_EQ(Activity::deserializeDifficulty(Activity::serializeDifficulty(difficulty)), difficulty);
+
+    for (const auto weekday : { Weekday::MONDAY, Weekday::TUESDAY, Weekday::WEDNESDAY, Weekday::THURSDAY, Weekday::FRIDAY, Weekday::SATURDAY, Weekday::SUNDAY })
+        EXPECT_EQ(DayPlan::deserializeWeekday(DayPlan::serializeWeekday(weekday)), weekday);
 }
 
 TEST(PlannerDocumentTest, UnparsableLastUpdateFallsBackToTheEpochInsteadOfFailing)
