@@ -357,3 +357,13 @@ TEST(PlannerDocumentTest, RoundTripIsStable)
 
     EXPECT_EQ(roundTrip(document), document.toJson());
 }
+
+TEST(PlannerDocumentTest, ADayIsEmptyOnlyWhenNoSlotIsPlanned)
+{
+    auto document = makeSampleDocument(10);
+
+    EXPECT_FALSE(document.weekPlan[0].isEmpty());
+    EXPECT_TRUE(document.weekPlan[1].isEmpty());
+    document.weekPlan[1].slots[2] = document.activities[0];
+    EXPECT_FALSE(document.weekPlan[1].isEmpty());
+}

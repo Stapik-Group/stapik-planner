@@ -215,6 +215,23 @@ bool PlannerModel::updateSlotCount(const int newSlotCount)
 
 bool PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
 {
+    return replaceDay(weekday, std::move(dayPlan), "command.slot.change", false);
+}
+
+bool PlannerModel::copyDay(const Weekday from, const Weekday to)
+{
+    const auto fromIndex = static_cast<std::size_t>(from);
+    if (fromIndex >= m_document.weekPlan.size())
+        return false;
+
+    DayPlan copy = m_document.weekPlan[fromIndex];
+    copy.weekday = to;
+
+    return replaceDay(to, std::move(copy), "command.day.copy", true);
+}
+
+bool PlannerModel::replaceDay(const Weekday weekday, DayPlan dayPlan, const char* descriptionKey, const bool announceWeekPlan)
+{
     const auto index = static_cast<std::size_t>(weekday);
     if (index >= m_document.weekPlan.size() || raisesLoadAboveLimit(m_document.weekPlan[index], dayPlan))
         return false;
@@ -222,7 +239,7 @@ bool PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
     auto after = content();
     after.weekPlan[index] = std::move(dayPlan);
 
-    execute("command.slot.change", std::move(after), false);
+    execute(descriptionKey, std::move(after), announceWeekPlan);
     return true;
 }
 

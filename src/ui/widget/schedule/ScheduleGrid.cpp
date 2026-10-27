@@ -1,6 +1,7 @@
 #include "ScheduleGrid.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/ConfirmDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <gtkmm/window.h>
@@ -60,19 +61,18 @@ void ScheduleGrid::initLayout()
 void ScheduleGrid::connectCellSignals()
 {
     for (int i = 0; i < DAYS; ++i)
+    {
+        const auto weekday = ScheduleWeekdays::ALL[static_cast<std::size_t>(i)];
+
         m_cells[i]->signalChanged().connect([this, i] { onDayChanged(i); });
+        m_cells[i]->signalCopyRequested().connect([this, weekday](const Weekday target) { onCopyRequested(weekday, target); });
+    }
 }
 
 void ScheduleGrid::onDayChanged(const int index)
 {
-    using enum Weekday;
-    static constexpr std::array weekdays = {
-        MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
-        FRIDAY, SATURDAY, SUNDAY
-    };
-
     const auto cellIndex = static_cast<std::size_t>(index);
-    if (m_model.updateDay(weekdays[cellIndex], m_cells[cellIndex]->getDayPlan()))
+    if (m_model.updateDay(ScheduleWeekdays::ALL[cellIndex], m_cells[cellIndex]->getDayPlan()))
         return;
 
     m_cells[cellIndex]->setDayPlan(m_model.weekPlan()[cellIndex]);
@@ -81,5 +81,50 @@ void ScheduleGrid::onDayChanged(const int index)
     {
         const auto& localeManager = LocaleManager::instance();
         showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.slot"));
+    }
+}
+
+void ScheduleGrid::onCopyRequested(const Weekday from, const Weekday to)
+{
+    const auto& weekPlan = m_model.weekPlan();
+    const auto& source = weekPlan[static_cast<std::size_t>(from)];
+    const auto& target = weekPlan[static_cast<std::size_t>(to)];
+
+    if (target.isEmpty() || target.slots == source.slots)
+    {
+        copyDay(from, to);
+        return;
+    }
+
+    auto* window = dynamic_cast<Gtk::Window*>(get_root());
+    if (window == nullptr)
+        return;
+
+    const auto& localeManager = LocaleManager::instance();
+    const LocalizationEngine::Arguments arguments = {
+        { "from", localeManager.translate(ScheduleWeekdays::FULL_KEYS[static_cast<std::size_t>(from)]) },
+        { "day", localeManager.translate(ScheduleWeekdays::FULL_KEYS[static_cast<std::size_t>(to)]) }
+    };
+
+    showConfirmDialog(
+        *window,
+        ConfirmDialogOptions{
+            .title = localeManager.translate("dialog.copyDay.title"),
+            .message = localeManager.translate("dialog.copyDay.message", arguments),
+            .confirmLabel = localeManager.translate("dialog.copyDay.button"),
+            .destructive = true
+        },
+        [this, from, to] { copyDay(from, to); });
+}
+
+void ScheduleGrid::copyDay(const Weekday from, const Weekday to)
+{
+    if (m_model.copyDay(from, to))
+        return;
+
+    if (auto* window = dynamic_cast<Gtk::Window*>(get_root()))
+    {
+        const auto& localeManager = LocaleManager::instance();
+        showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.copy"));
     }
 }

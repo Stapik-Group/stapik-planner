@@ -28,5 +28,5 @@ void ScheduleHeader::refreshLabels()
 {
     auto const& loc = LocaleManager::instance();
     for (int i = 0; i < COLUMNS; ++i)
-        m_labels[i].set_text(loc.translate(DAY_KEYS[i]));
+        m_labels[i].set_text(loc.translate(ScheduleWeekdays::KEYS[i]));
 }

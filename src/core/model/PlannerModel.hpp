@@ -49,6 +49,7 @@ public:
     void removeActivity(std::size_t index);
     [[nodiscard]] bool updateSlotCount(int newSlotCount);
     bool updateDay(Weekday weekday, DayPlan dayPlan);
+    bool copyDay(Weekday from, Weekday to);
 
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 
@@ -99,6 +100,7 @@ private:
     bool m_saveFailing = false;
 
     [[nodiscard]] Content content() const;
+    bool replaceDay(Weekday weekday, DayPlan dayPlan, const char* descriptionKey, bool announceWeekPlan);
     void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);
     void restoreContent(const Content& content, bool announceWeekPlan);
     [[nodiscard]] PlannerDocument::TimePoint nextUpdateTime() const;

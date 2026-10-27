@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <vector>
@@ -29,6 +30,11 @@ struct DayPlan
         slots(static_cast<size_t>(slotsCount), std::nullopt) {}
 
     [[nodiscard]] bool operator==(const DayPlan&) const = default;
+
+    [[nodiscard]] bool isEmpty() const
+    {
+        return std::ranges::none_of(slots, [](const std::optional<Activity>& slot) { return slot.has_value(); });
+    }
 
     [[nodiscard]] int totalLoad() const
     {

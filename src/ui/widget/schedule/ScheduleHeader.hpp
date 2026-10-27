@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ScheduleWeekdays.hpp"
+
 #include <gtkmm/box.h>
 #include <gtkmm/label.h>
 
@@ -11,8 +13,7 @@ public:
     explicit ScheduleHeader();
 
 private:
-    static constexpr int COLUMNS = 7;
-    static constexpr std::array<const char*, COLUMNS> DAY_KEYS = { "day.mon", "day.tue", "day.wed", "day.thu", "day.fri", "day.sat", "day.sun" };
+    static constexpr int COLUMNS = ScheduleWeekdays::COUNT;
 
     std::array<Gtk::Label, COLUMNS> m_labels;
 

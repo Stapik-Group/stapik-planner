@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScheduleDayColumn.hpp"
+#include "ScheduleWeekdays.hpp"
 #include "../../../core/model/PlannerModel.hpp"
 
 #include <gtkmm/grid.h>
@@ -13,7 +14,7 @@ class ScheduleGrid : public Gtk::Grid
 public:
     explicit ScheduleGrid(PlannerModel& model);
 private:
-    static constexpr int DAYS = 7;
+    static constexpr int DAYS = ScheduleWeekdays::COUNT;
 
     PlannerModel& m_model;
     int m_slotCount;
@@ -22,4 +23,6 @@ private:
     void initLayout();
     void connectCellSignals();
     void onDayChanged(int index);
+    void onCopyRequested(Weekday from, Weekday to);
+    void copyDay(Weekday from, Weekday to);
 };

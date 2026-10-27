@@ -1,10 +1,21 @@
 #include "ScheduleDayColumn.hpp"
+#include "ScheduleWeekdays.hpp"
+
+#include "stapik/locale/LocaleManager.hpp"
+
+#include <format>
 
 ScheduleDayColumn::ScheduleDayColumn(const PlannerModel& model) : Box(Gtk::Orientation::VERTICAL, 2),
     m_slotCount(model.settings().slots),
     m_slots(static_cast<size_t>(model.settings().slots))
 {
     initLayout();
+    initContextMenu();
+}
+
+ScheduleDayColumn::~ScheduleDayColumn()
+{
+    m_contextMenu.unparent();
 }
 
 void ScheduleDayColumn::initLayout()
@@ -20,6 +31,51 @@ void ScheduleDayColumn::initLayout()
     }
 
     append(m_loadBar);
+}
+
+void ScheduleDayColumn::initContextMenu()
+{
+    m_actions = Gio::SimpleActionGroup::create();
+    for (std::size_t index = 0; index < ScheduleWeekdays::ALL.size(); ++index)
+    {
+        m_actions->add_action(std::format("copyTo{}", index), [this, index]
+        {
+            m_signalCopyRequested.emit(ScheduleWeekdays::ALL[index]);
+        });
+    }
+    insert_action_group("day", m_actions);
+
+    m_contextMenu.set_parent(*this);
+    m_contextMenu.set_has_arrow(false);
+    m_contextMenu.set_halign(Gtk::Align::START);
+
+    m_rightClick = Gtk::GestureClick::create();
+    m_rightClick->set_button(GDK_BUTTON_SECONDARY);
+    m_rightClick->signal_pressed().connect([this](const int, const double x, const double y) { showContextMenu(x, y); });
+    add_controller(m_rightClick);
+}
+
+Glib::RefPtr<Gio::Menu> ScheduleDayColumn::buildContextMenu() const
+{
+    const auto& localeManager = LocaleManager::instance();
+
+    const auto targets = Gio::Menu::create();
+    for (std::size_t index = 0; index < ScheduleWeekdays::ALL.size(); ++index)
+    {
+        if (ScheduleWeekdays::ALL[index] != m_weekday)
+            targets->append(localeManager.translate(ScheduleWeekdays::FULL_KEYS[index]), std::format("day.copyTo{}", index));
+    }
+
+    const auto menu = Gio::Menu::create();
+    menu->append_section(localeManager.translate("schedule.menu.copyTo"), targets);
+    return menu;
+}
+
+void ScheduleDayColumn::showContextMenu(const double x, const double y)
+{
+    m_contextMenu.set_menu_model(buildContextMenu());
+    m_contextMenu.set_pointing_to(Gdk::Rectangle(static_cast<int>(x), static_cast<int>(y), 1, 1));
+    m_contextMenu.popup();
 }
 
 void ScheduleDayColumn::setActivities(const std::vector<Activity>& activities)
@@ -100,4 +156,9 @@ void ScheduleDayColumn::onSlotChanged()
 sigc::signal<void()>& ScheduleDayColumn::signalChanged()
 {
     return m_signalChanged;
+}
+
+sigc::signal<void(Weekday)>& ScheduleDayColumn::signalCopyRequested()
+{
+    return m_signalCopyRequested;
 }

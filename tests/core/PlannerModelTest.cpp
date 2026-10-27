@@ -517,3 +517,53 @@ TEST_F(PlannerModelTest, PlannedSlotCountCountsEveryPlannedCopyOfAnActivity)
     EXPECT_EQ(m_model->plannedSlotCount(m_model->activities()[1].id), 0U);
     EXPECT_EQ(m_model->plannedSlotCount("missing"), 0U);
 }
+
+TEST_F(PlannerModelTest, CopyingADayReplacesThePlanOfTheTargetDay)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    m_model->addActivity(Activity{ .name = "Study", .difficulty = Difficulty::MEDIUM });
+    auto monday = m_model->weekPlan()[0];
+    monday.slots[0] = m_model->activities()[0];
+    monday.slots[2] = m_model->activities()[1];
+    ASSERT_TRUE(m_model->updateDay(Weekday::MONDAY, monday));
+    auto tuesday = m_model->weekPlan()[1];
+    tuesday.slots[1] = m_model->activities()[2];
+    ASSERT_TRUE(m_model->updateDay(Weekday::TUESDAY, tuesday));
+
+    EXPECT_TRUE(m_model->copyDay(Weekday::MONDAY, Weekday::TUESDAY));
+
+    EXPECT_EQ(m_model->weekPlan()[1].slots, m_model->weekPlan()[0].slots);
+    EXPECT_EQ(m_model->weekPlan()[1].weekday, Weekday::TUESDAY);
+}
+
+TEST_F(PlannerModelTest, CopyingADayCanBeUndoneAndIsAnnouncedToTheViews)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    auto monday = m_model->weekPlan()[0];
+    monday.slots[0] = m_model->activities()[0];
+    ASSERT_TRUE(m_model->updateDay(Weekday::MONDAY, monday));
+    const auto tuesdayBefore = m_model->weekPlan()[1].slots;
+    int announcements = 0;
+    m_model->signalWeekPlanChanged().connect([&announcements] { ++announcements; });
+
+    ASSERT_TRUE(m_model->copyDay(Weekday::MONDAY, Weekday::TUESDAY));
+    EXPECT_EQ(announcements, 1);
+    EXPECT_TRUE(m_model->undoStack().undo());
+
+    EXPECT_EQ(m_model->weekPlan()[1].slots, tuesdayBefore);
+}
+
+TEST_F(PlannerModelTest, AnOverloadedDayCannotBeCopiedOntoAFreeDay)
+{
+    auto document = PlannerDocument::createDefault();
+    document.activities = { Activity{ .id = "gym", .name = "Gym", .difficulty = Difficulty::HARD } };
+    for (std::size_t slot = 0; slot < 3; ++slot)
+        document.weekPlan[0].slots[slot] = document.activities[0];
+    m_model.reset();
+    ASSERT_TRUE(PlannerStorage().save(document));
+    m_model = std::make_unique<PlannerModel>();
+
+    EXPECT_FALSE(m_model->copyDay(Weekday::MONDAY, Weekday::TUESDAY));
+    EXPECT_EQ(m_model->weekPlan()[1].totalLoad(), 0);
+}
