@@ -58,7 +58,7 @@ jobs:
       - name: Install the dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgtkmm-4.0-dev libcurl4-openssl-dev dpkg-dev ninja-build
+          sudo apt-get install -y --no-install-recommends libgtkmm-4.0-dev libcurl4-openssl-dev libsodium-dev zlib1g-dev libsecret-1-dev libx11-dev dpkg-dev ninja-build
 
       - name: Install CMake
         uses: jwlawson/actions-setup-cmake@v2
@@ -104,6 +104,8 @@ jobs:
             mingw-w64-ucrt-x86_64-pkgconf
             mingw-w64-ucrt-x86_64-gtkmm-4.0
             mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-libsodium
+            mingw-w64-ucrt-x86_64-zlib
             mingw-w64-ucrt-x86_64-adwaita-icon-theme
             mingw-w64-ucrt-x86_64-hicolor-icon-theme
 

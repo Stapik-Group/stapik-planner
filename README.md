@@ -24,12 +24,15 @@ A desktop weekly activity planner for Linux, written in C++20 using GTK4/gtkmm. 
 
 - `gtkmm-4.0`
 - `libcurl`
+- `libsodium` and `zlib`
+- `libsecret` (Linux, optional: keeps the cloud API key in the system keyring instead of a plain file)
+- `libx11` (Linux, optional: remembers the position of the window on X11)
 - [`stapik-common`](https://github.com/Stapik-Group/stapik-common) v1.6.0+ (fetched automatically via CMake FetchContent)
 - `nlohmann/json` (fetched automatically via CMake FetchContent, transitively provided by `stapik-common`)
 
 On Ubuntu/Debian:
 ```bash
-sudo apt install libgtkmm-4.0-dev libcurl4-openssl-dev
+sudo apt install libgtkmm-4.0-dev libcurl4-openssl-dev libsodium-dev zlib1g-dev libsecret-1-dev libx11-dev
 ```
 
 Building a `.deb` package additionally requires `dpkg-dev` (used to auto-detect runtime dependencies):
