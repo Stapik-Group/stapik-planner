@@ -2,15 +2,20 @@
 
 #include "../widget/PlanLabel.hpp"
 
+#include "stapik/app/StapikApplication.hpp"
 #include "stapik/locale/DateFormatter.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
+#include <glibmm/main.h>
+
+#include <algorithm>
 #include <format>
+#include <memory>
 
 MainWindow::MainWindow(const stapik::theme::ThemeRegistry& themes) :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
-    m_contentBox(Gtk::Orientation::VERTICAL, 0),
+    m_paned(Gtk::Orientation::VERTICAL),
     m_mainMenu(*this, m_model, themes),
     m_activityCatalogView(m_model),
     m_scheduleView(m_model)
@@ -43,18 +48,50 @@ void MainWindow::updateTitle()
 void MainWindow::initLayout()
 {
     m_scheduleView.set_vexpand(true);
-    m_activityCatalogView.set_size_request(-1, 200);
 
-    m_contentBox.append(m_scheduleView);
-    m_contentBox.append(m_separator);
-    m_contentBox.append(m_activityCatalogView);
+    m_paned.set_start_child(m_scheduleView);
+    m_paned.set_end_child(m_activityCatalogView);
+    m_paned.set_resize_start_child(true);
+    m_paned.set_resize_end_child(false);
+    m_paned.set_shrink_start_child(false);
+    m_paned.set_shrink_end_child(false);
+    m_paned.set_vexpand(true);
+
+    m_activityCatalogView.signalCollapsedChanged().connect(sigc::mem_fun(*this, &MainWindow::onCatalogCollapsedChanged));
+    signal_map().connect([this] { Glib::signal_idle().connect_once([this] { configureCatalogDivider(); }); });
 
     m_mainBox.append(m_mainMenu.getMenuBar());
-    m_mainBox.append(m_contentBox);
+    m_mainBox.append(m_paned);
 
     m_syncStatus.set_margin(4);
     m_syncStatus.set_halign(Gtk::Align::END);
     m_mainBox.append(m_syncStatus);
+}
+
+void MainWindow::configureCatalogDivider()
+{
+    if (m_dividerConfigured || m_paned.get_height() <= 0)
+        return;
+
+    m_dividerConfigured = true;
+    m_paned.set_position(std::max(MIN_SCHEDULE_HEIGHT, m_paned.get_height() - DEFAULT_CATALOG_HEIGHT));
+
+    if (const auto application = std::dynamic_pointer_cast<stapik::app::StapikApplication>(get_application()))
+        application->rememberPanedPosition(m_paned, CATALOG_DIVIDER_NAME);
+
+    m_expandedDividerPosition = m_paned.get_position();
+}
+
+void MainWindow::onCatalogCollapsedChanged(const bool collapsed)
+{
+    if (collapsed)
+    {
+        m_expandedDividerPosition = m_paned.get_position();
+        m_paned.set_position(m_paned.get_height());
+        return;
+    }
+
+    m_paned.set_position(m_expandedDividerPosition);
 }
 
 void MainWindow::initCloud()

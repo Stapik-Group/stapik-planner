@@ -24,6 +24,7 @@ ActivityCatalogView::ActivityCatalogView(PlannerModel& model) :
         const auto& loc = LocaleManager::instance();
         m_titleLabel.set_text(loc.translate("panel.activities.title"));
         m_addButton.set_label(loc.translate("panel.activities.button.add"));
+        refreshCollapseButton();
         refreshList();
     });
 }
@@ -39,9 +40,15 @@ void ActivityCatalogView::initLayout()
     m_addButton.set_label(loc.translate("panel.activities.button.add"));
     m_addButton.signal_clicked().connect([this] { onAddRequested(); });
 
+    m_collapseButton.set_has_frame(false);
+    m_collapseButton.signal_toggled().connect([this] { onCollapseToggled(); });
+    refreshCollapseButton();
+
     m_headerBox.set_margin(8);
+    m_headerBox.set_spacing(4);
     m_headerBox.append(m_titleLabel);
     m_headerBox.append(m_addButton);
+    m_headerBox.append(m_collapseButton);
 
     m_listBox.set_margin(8);
 
@@ -52,6 +59,29 @@ void ActivityCatalogView::initLayout()
 
     append(m_headerBox);
     append(m_scrolledWindow);
+}
+
+void ActivityCatalogView::refreshCollapseButton()
+{
+    const auto& loc = LocaleManager::instance();
+    const bool collapsed = m_collapseButton.get_active();
+
+    m_collapseButton.set_label(collapsed ? "▴" : "▾");
+    m_collapseButton.set_tooltip_text(loc.translate(collapsed ? "panel.activities.expand" : "panel.activities.collapse"));
+}
+
+void ActivityCatalogView::onCollapseToggled()
+{
+    const bool collapsed = m_collapseButton.get_active();
+
+    m_scrolledWindow.set_visible(!collapsed);
+    refreshCollapseButton();
+    m_signalCollapsedChanged.emit(collapsed);
+}
+
+sigc::signal<void(bool)>& ActivityCatalogView::signalCollapsedChanged()
+{
+    return m_signalCollapsedChanged;
 }
 
 void ActivityCatalogView::refreshList()

@@ -18,6 +18,8 @@
   "day.full.sun": "Sunday",
   "panel.activities.title": "Activity pool",
   "panel.activities.button.add": "Add",
+  "panel.activities.collapse": "Collapse the activity pool",
+  "panel.activities.expand": "Expand the activity pool",
   "schedule.slot.empty": "Free",
   "activity.difficulty.LIGHT.label": "Light",
   "activity.difficulty.NORMAL.label": "Normal",

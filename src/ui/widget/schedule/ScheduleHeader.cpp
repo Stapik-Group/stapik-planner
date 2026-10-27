@@ -13,6 +13,8 @@ void ScheduleHeader::initLayout()
 {
     add_css_class("todo-header");
     set_hexpand(true);
+    set_homogeneous(true);
+    set_spacing(ScheduleWeekdays::COLUMN_SPACING);
 
     for (int i = 0; i < COLUMNS; ++i)
     {

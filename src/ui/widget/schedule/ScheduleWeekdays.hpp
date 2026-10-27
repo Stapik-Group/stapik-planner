@@ -7,6 +7,7 @@
 namespace ScheduleWeekdays
 {
     inline constexpr int COUNT = 7;
+    inline constexpr int COLUMN_SPACING = 8;
 
     inline constexpr std::array<Weekday, COUNT> ALL = {
         Weekday::MONDAY, Weekday::TUESDAY, Weekday::WEDNESDAY, Weekday::THURSDAY,

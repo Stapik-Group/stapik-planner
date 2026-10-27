@@ -18,6 +18,8 @@
   "day.full.sun": "Niedziela",
   "panel.activities.title": "Pula czynności",
   "panel.activities.button.add": "Dodaj",
+  "panel.activities.collapse": "Zwiń pulę czynności",
+  "panel.activities.expand": "Rozwiń pulę czynności",
   "schedule.slot.empty": "Wolne",
   "activity.difficulty.LIGHT.label": "Lekki",
   "activity.difficulty.NORMAL.label": "Normalny",

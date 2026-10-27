@@ -5,6 +5,7 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <gtkmm/scrolledwindow.h>
+#include <gtkmm/togglebutton.h>
 #include <gtkmm/window.h>
 
 #include <optional>
@@ -15,17 +16,23 @@ class ActivityCatalogView : public Gtk::Box
 {
 public:
     explicit ActivityCatalogView(PlannerModel& model);
+
+    sigc::signal<void(bool)>& signalCollapsedChanged();
 private:
     PlannerModel& m_model;
 
     Box m_headerBox;
     Gtk::Label m_titleLabel;
     Gtk::Button m_addButton;
+    Gtk::ToggleButton m_collapseButton;
+    sigc::signal<void(bool)> m_signalCollapsedChanged;
     Gtk::ScrolledWindow m_scrolledWindow;
     Box m_listBox;
 
     void initLayout();
     void refreshList();
+    void refreshCollapseButton();
+    void onCollapseToggled();
 
     void onAddRequested();
     void onEditRequested(const std::string& id);

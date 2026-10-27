@@ -79,7 +79,7 @@
 }
 
 .activity-panel-area {
-    min-height: 280px;
+    min-height: 60px;
     border-top: 1px solid @stapik_border;
     padding: 10px;
     background-color: #fafafa;

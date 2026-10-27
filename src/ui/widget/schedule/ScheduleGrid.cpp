@@ -48,7 +48,7 @@ void ScheduleGrid::initLayout()
     set_hexpand(true);
     set_vexpand(true);
 
-    set_column_spacing(8);
+    set_column_spacing(ScheduleWeekdays::COLUMN_SPACING);
     set_row_spacing(0);
 
     for (int i = 0; i < DAYS; ++i)
