@@ -4,6 +4,7 @@
 
 #include "stapik/cloud/CloudStorageConfig.hpp"
 #include "stapik/command/UndoStack.hpp"
+#include "stapik/document/BackupInfo.hpp"
 #include "stapik/sync/CloudSession.hpp"
 
 #include <sigc++/connection.h>
@@ -13,6 +14,8 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 class PlannerStorage;
 
@@ -45,6 +48,9 @@ public:
 
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 
+    [[nodiscard]] std::vector<stapik::document::BackupInfo> listBackups() const;
+    [[nodiscard]] bool restoreBackup(const stapik::document::BackupInfo& backup);
+
     [[nodiscard]] bool connectCloud(const CloudStorageConfig& config);
     void syncCloud();
     void disconnectCloud();
@@ -59,6 +65,7 @@ public:
     sigc::signal<void(stapik::sync::SyncStatus)>& signalCloudStatusChanged();
     sigc::signal<void(const CloudOutcome&)>& signalCloudOutcome();
     sigc::signal<void(TimePoint)>& signalCloudApiKeyExpiring();
+    sigc::signal<void(const std::string&)>& signalSaveFailed();
 private:
     struct Content
     {
@@ -82,7 +89,9 @@ private:
     sigc::signal<void(stapik::sync::SyncStatus)> m_signalCloudStatusChanged;
     sigc::signal<void(const CloudOutcome&)> m_signalCloudOutcome;
     sigc::signal<void(TimePoint)> m_signalCloudApiKeyExpiring;
+    sigc::signal<void(const std::string&)> m_signalSaveFailed;
     sigc::connection m_deferredPush;
+    bool m_saveFailing = false;
 
     [[nodiscard]] Content content() const;
     void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);

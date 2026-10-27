@@ -185,6 +185,25 @@ stapik::command::UndoStack& PlannerModel::undoStack()
     return m_undoStack;
 }
 
+std::vector<stapik::document::BackupInfo> PlannerModel::listBackups() const
+{
+    return m_storage->listBackups();
+}
+
+bool PlannerModel::restoreBackup(const stapik::document::BackupInfo& backup)
+{
+    auto loaded = m_storage->loadBackup(backup);
+    if (loaded.status != stapik::document::LoadStatus::Loaded || !loaded.document.has_value())
+    {
+        stapik::log::warning("Cannot restore the planner backup {}", stapik::storage::pathText(backup.path));
+        return false;
+    }
+
+    const auto& restored = *loaded.document;
+    execute("command.backup.restore", Content{ .settings = restored.settings, .activities = restored.activities, .weekPlan = restored.weekPlan });
+    return true;
+}
+
 bool PlannerModel::connectCloud(const CloudStorageConfig& config)
 {
     return m_cloudSession.connectWith(config, m_document);
@@ -252,6 +271,11 @@ sigc::signal<void(PlannerModel::TimePoint)>& PlannerModel::signalCloudApiKeyExpi
     return m_signalCloudApiKeyExpiring;
 }
 
+sigc::signal<void(const std::string&)>& PlannerModel::signalSaveFailed()
+{
+    return m_signalSaveFailed;
+}
+
 PlannerModel::Content PlannerModel::content() const
 {
     return Content{ .settings = m_document.settings, .activities = m_document.activities, .weekPlan = m_document.weekPlan };
@@ -296,8 +320,18 @@ void PlannerModel::persist()
 
 void PlannerModel::saveToDisk()
 {
-    if (const auto saved = m_storage->save(m_document); !saved)
-        stapik::log::warning("Cannot save the planner to {}: {}", stapik::storage::pathText(m_storage->filePath()), saved.error().message());
+    const auto saved = m_storage->save(m_document);
+    if (saved)
+    {
+        m_saveFailing = false;
+        return;
+    }
+
+    const auto message = saved.error().message();
+    stapik::log::warning("Cannot save the planner to {}: {}", stapik::storage::pathText(m_storage->filePath()), message);
+
+    if (!std::exchange(m_saveFailing, true))
+        m_signalSaveFailed.emit(message);
 }
 
 void PlannerModel::onCloudOutcome(const CloudOutcome& outcome)

@@ -51,7 +51,9 @@ PlannerStorage::PlannerStorage() :
 
 PlannerStorage::PlannerStorage(std::filesystem::path filePath) :
     m_documentFile(std::move(filePath), createMigrator())
-{}
+{
+    m_documentFile.setBackupCount(BACKUP_COUNT);
+}
 
 PlannerDocument PlannerStorage::load() const
 {
@@ -84,6 +86,16 @@ PlannerDocument PlannerStorage::load() const
 stapik::storage::FileResult PlannerStorage::save(const PlannerDocument& document) const
 {
     return m_documentFile.save(document);
+}
+
+std::vector<stapik::document::BackupInfo> PlannerStorage::listBackups() const
+{
+    return m_documentFile.listBackups();
+}
+
+stapik::document::LoadResult<PlannerDocument> PlannerStorage::loadBackup(const stapik::document::BackupInfo& backup) const
+{
+    return m_documentFile.loadBackup(backup);
 }
 
 const std::filesystem::path& PlannerStorage::filePath() const

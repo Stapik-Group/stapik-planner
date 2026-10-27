@@ -27,6 +27,7 @@ MainMenu::MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const st
     initSlotCountAction();
 
     m_standardMenu.addToMenu(StandardMenu::Target::File, [](Gio::Menu& fileMenu) { buildDisconnectMenu(fileMenu); });
+    m_standardMenu.addToMenu(StandardMenu::Target::File, [](Gio::Menu& fileMenu) { buildRestoreBackupMenu(fileMenu); });
     m_standardMenu.addToMenu(StandardMenu::Target::Settings, [this](Gio::Menu& settingsMenu) { buildSlotCountMenu(settingsMenu); });
 }
 
@@ -45,6 +46,13 @@ void MainMenu::buildDisconnectMenu(Gio::Menu& fileMenu)
     const auto disconnectSection = Gio::Menu::create();
     disconnectSection->append(LocaleManager::instance().translate("menu.file.disconnect"), "win.disconnect");
     fileMenu.append_section(disconnectSection);
+}
+
+void MainMenu::buildRestoreBackupMenu(Gio::Menu& fileMenu)
+{
+    const auto backupSection = Gio::Menu::create();
+    backupSection->append(LocaleManager::instance().translate("menu.file.restoreBackup"), "win.restoreBackup");
+    fileMenu.append_section(backupSection);
 }
 
 void MainMenu::initSlotCountAction()

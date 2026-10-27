@@ -49,6 +49,7 @@ void MainWindow::initCloud()
     m_model.signalCloudStatusChanged().connect(sigc::mem_fun(*this, &MainWindow::onCloudStatusChanged));
     m_model.signalCloudOutcome().connect(sigc::mem_fun(*this, &MainWindow::onCloudOutcome));
     m_model.signalCloudApiKeyExpiring().connect(sigc::mem_fun(*this, &MainWindow::onApiKeyExpiring));
+    m_model.signalSaveFailed().connect(sigc::mem_fun(*this, &MainWindow::onSaveFailed));
     signal_close_request().connect(sigc::mem_fun(*this, &MainWindow::onCloseRequest), false);
 }
 
@@ -64,6 +65,12 @@ void MainWindow::onCloudStatusChanged(const stapik::sync::SyncStatus status)
 {
     m_syncStatus.set_visible(m_model.isCloudConnected());
     m_syncStatus.setStatus(status);
+}
+
+void MainWindow::onSaveFailed(const std::string& message)
+{
+    const auto& localeManager = LocaleManager::instance();
+    showMessageDialog(*this, localeManager.translate("dialog.save.failed.title"), localeManager.translate("dialog.save.failed.text", { { "error", message } }));
 }
 
 void MainWindow::onApiKeyExpiring(const PlannerModel::TimePoint expiresAt)

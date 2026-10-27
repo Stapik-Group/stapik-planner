@@ -35,6 +35,11 @@
   "dialog.disconnect.button": "Rozłącz",
   "cloud.plainFileSecrets": "Brak systemowego pęku kluczy, więc klucz API i fraza szyfrująca są przechowywane w pliku dostępnym tylko dla Twojego użytkownika.",
   "cloud.apiKeyExpiring.header": "Klucz API chmury wkrótce wygaśnie",
+  "command.backup.restore": "przywrócenie kopii zapasowej",
+  "dialog.backup.restoreFailed.title": "Nie udało się przywrócić kopii zapasowej",
+  "dialog.backup.restoreFailed.text": "Plik jest nieczytelny albo zapisała go nowsza wersja planera.",
+  "dialog.save.failed.title": "Nie udało się zapisać planera",
+  "dialog.save.failed.text": "Zmiany są tylko w otwartym oknie, ale nie na dysku: {error}",
   "button.ok": "OK",
   "button.cancel": "Anuluj"
 }

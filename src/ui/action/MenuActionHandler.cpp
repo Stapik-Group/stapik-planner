@@ -6,6 +6,7 @@
 #include "stapik/ui/dialog/ConfirmDialog.hpp"
 #include "stapik/ui/dialog/ConnectDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
+#include "stapik/ui/dialog/RestoreBackupDialog.hpp"
 
 #include <format>
 #include <string>
@@ -42,6 +43,7 @@ void MenuActionHandler::registerActions()
     m_window.add_action("connect", sigc::mem_fun(*this, &MenuActionHandler::onActionConnect));
     m_disconnectAction = m_window.add_action("disconnect", sigc::mem_fun(*this, &MenuActionHandler::onActionDisconnect));
     m_window.add_action("sync", sigc::mem_fun(*this, &MenuActionHandler::onActionSync));
+    m_window.add_action("restoreBackup", sigc::mem_fun(*this, &MenuActionHandler::onActionRestoreBackup));
 
     m_disconnectAction->set_enabled(m_model.isCloudConnected());
     m_statusConnection = m_model.signalCloudStatusChanged().connect([this](const stapik::sync::SyncStatus) { m_disconnectAction->set_enabled(m_model.isCloudConnected()); });
@@ -77,6 +79,20 @@ void MenuActionHandler::onActionDisconnect()
 void MenuActionHandler::onActionSync()
 {
     m_model.syncCloud();
+}
+
+void MenuActionHandler::onActionRestoreBackup()
+{
+    showRestoreBackupDialog(m_window, m_model.listBackups(), [this](const stapik::document::BackupInfo& backup) { handleChosenBackup(backup); });
+}
+
+void MenuActionHandler::handleChosenBackup(const stapik::document::BackupInfo& backup)
+{
+    if (m_model.restoreBackup(backup))
+        return;
+
+    const auto& localeManager = LocaleManager::instance();
+    showMessageDialog(m_window, localeManager.translate("dialog.backup.restoreFailed.title"), localeManager.translate("dialog.backup.restoreFailed.text"));
 }
 
 void MenuActionHandler::handleConfirmedConfig(const CloudStorageConfig& config)

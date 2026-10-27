@@ -3,6 +3,7 @@
 #include "../../core/model/PlannerModel.hpp"
 
 #include "stapik/cloud/CloudStorageConfig.hpp"
+#include "stapik/document/BackupInfo.hpp"
 
 #include "stapik/sync/SyncStatus.hpp"
 
@@ -32,7 +33,9 @@ private:
     void onActionConnect();
     void onActionDisconnect();
     void onActionSync();
+    void onActionRestoreBackup();
 
+    void handleChosenBackup(const stapik::document::BackupInfo& backup);
     void handleConfirmedConfig(const CloudStorageConfig& config);
     void showConnectFeedback(const PlannerModel::CloudOutcome& outcome);
 };

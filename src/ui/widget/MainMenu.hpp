@@ -40,5 +40,6 @@ private:
     void initSlotCountAction();
     void buildSlotCountMenu(Gio::Menu& settingsMenu) const;
     static void buildDisconnectMenu(Gio::Menu& fileMenu);
+    static void buildRestoreBackupMenu(Gio::Menu& fileMenu);
     void onSlotCountSelected(int slotCount);
 };
