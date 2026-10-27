@@ -37,6 +37,7 @@ private:
     Gtk::Separator m_separator;
 
     void init();
+    void updateTitle();
     void initLayout();
     void initCloud();
 

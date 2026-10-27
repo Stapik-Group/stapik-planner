@@ -1,4 +1,5 @@
 #include "PlannerModel.hpp"
+#include "ActivityName.hpp"
 #include "../../infrastructure/storage/PlannerStorage.hpp"
 
 #include "stapik/command/ICommand.hpp"
@@ -41,6 +42,29 @@ namespace
         }
 
         return false;
+    }
+
+    std::size_t countPlannedSlots(const WeekPlan& weekPlan, const std::string& activityId)
+    {
+        std::size_t count = 0;
+        for (const auto& day : weekPlan)
+        {
+            count += static_cast<std::size_t>(std::ranges::count_if(day.slots, [&activityId](const std::optional<Activity>& slot)
+            {
+                return slot.has_value() && slot->id == activityId;
+            }));
+        }
+
+        return count;
+    }
+
+    std::vector<std::pair<std::string, std::string>> planIdentities(const std::string& activeId, const std::string& activeName, const std::vector<SavedPlan>& savedPlans)
+    {
+        std::vector<std::pair<std::string, std::string>> identities{ { activeId, activeName } };
+        for (const auto& plan : savedPlans)
+            identities.emplace_back(plan.id, plan.name);
+
+        return identities;
     }
 
     void clearPlannedCopies(WeekPlan& weekPlan, const std::string& activityId)
@@ -141,14 +165,9 @@ std::optional<std::size_t> PlannerModel::findActivity(const std::string& id) con
 
 std::size_t PlannerModel::plannedSlotCount(const std::string& id) const
 {
-    std::size_t count = 0;
-    for (const auto& day : m_document.weekPlan)
-    {
-        count += static_cast<std::size_t>(std::ranges::count_if(day.slots, [&id](const std::optional<Activity>& slot)
-        {
-            return slot.has_value() && slot->id == id;
-        }));
-    }
+    auto count = countPlannedSlots(m_document.weekPlan, id);
+    for (const auto& plan : m_document.savedPlans)
+        count += countPlannedSlots(plan.weekPlan, id);
 
     return count;
 }
@@ -171,9 +190,17 @@ bool PlannerModel::updateActivity(const std::size_t index, Activity activity)
     activity.id = after.activities[index].id;
     after.activities[index] = std::move(activity);
     refreshPlannedCopies(after.weekPlan, after.activities[index]);
+    for (auto& plan : after.savedPlans)
+        refreshPlannedCopies(plan.weekPlan, after.activities[index]);
 
     if (raisesAnyDayAboveLimit(m_document.weekPlan, after.weekPlan))
         return false;
+
+    for (std::size_t planIndex = 0; planIndex < after.savedPlans.size(); ++planIndex)
+    {
+        if (raisesAnyDayAboveLimit(m_document.savedPlans[planIndex].weekPlan, after.savedPlans[planIndex].weekPlan))
+            return false;
+    }
 
     execute("command.activity.edit", std::move(after));
     return true;
@@ -188,6 +215,8 @@ void PlannerModel::removeActivity(const std::size_t index)
     const auto removedId = after.activities[index].id;
     after.activities.erase(after.activities.begin() + static_cast<Activities::difference_type>(index));
     clearPlannedCopies(after.weekPlan, removedId);
+    for (auto& plan : after.savedPlans)
+        clearPlannedCopies(plan.weekPlan, removedId);
 
     execute("command.activity.remove", std::move(after));
 }
@@ -196,16 +225,23 @@ bool PlannerModel::updateSlotCount(const int newSlotCount)
 {
     auto after = content();
     bool dataLost = false;
-    for (auto& day : after.weekPlan)
+    const auto resizePlan = [&dataLost, newSlotCount](WeekPlan& weekPlan)
     {
-        for (auto slotIndex = static_cast<std::size_t>(newSlotCount); slotIndex < day.slots.size(); ++slotIndex)
+        for (auto& day : weekPlan)
         {
-            if (day.slots[slotIndex].has_value())
-                dataLost = true;
-        }
+            for (auto slotIndex = static_cast<std::size_t>(newSlotCount); slotIndex < day.slots.size(); ++slotIndex)
+            {
+                if (day.slots[slotIndex].has_value())
+                    dataLost = true;
+            }
 
-        day.slots.resize(static_cast<std::size_t>(newSlotCount));
-    }
+            day.slots.resize(static_cast<std::size_t>(newSlotCount));
+        }
+    };
+
+    resizePlan(after.weekPlan);
+    for (auto& plan : after.savedPlans)
+        resizePlan(plan.weekPlan);
 
     after.settings.slots = newSlotCount;
     execute("command.slots.count", std::move(after));
@@ -268,7 +304,149 @@ bool PlannerModel::restoreBackup(const stapik::document::BackupInfo& backup)
     }
 
     const auto& restored = *loaded.document;
-    execute("command.backup.restore", Content{ .settings = restored.settings, .activities = restored.activities, .weekPlan = restored.weekPlan });
+    execute("command.backup.restore", Content{
+        .settings = restored.settings,
+        .activities = restored.activities,
+        .weekPlan = restored.weekPlan,
+        .activePlanId = restored.activePlanId,
+        .activePlanName = restored.activePlanName,
+        .savedPlans = restored.savedPlans
+    });
+    return true;
+}
+
+std::vector<PlannerModel::PlanSummary> PlannerModel::plans() const
+{
+    std::vector<PlanSummary> summaries{ { m_document.activePlanId, m_document.activePlanName, true } };
+    for (const auto& plan : m_document.savedPlans)
+        summaries.push_back({ plan.id, plan.name, false });
+
+    return summaries;
+}
+
+const std::string& PlannerModel::activePlanId() const
+{
+    return m_document.activePlanId;
+}
+
+const std::string& PlannerModel::activePlanName() const
+{
+    return m_document.activePlanName;
+}
+
+bool PlannerModel::switchPlan(const std::string& id)
+{
+    if (id == m_document.activePlanId)
+        return true;
+
+    auto after = content();
+    const auto target = std::ranges::find(after.savedPlans, id, &SavedPlan::id);
+    if (target == after.savedPlans.end())
+        return false;
+
+    SavedPlan previous{ after.activePlanId, after.activePlanName, std::move(after.weekPlan) };
+    after.activePlanId = target->id;
+    after.activePlanName = target->name;
+    after.weekPlan = std::move(target->weekPlan);
+    *target = std::move(previous);
+
+    execute("command.plan.switch", std::move(after));
+    return true;
+}
+
+bool PlannerModel::createPlan(const std::string& name)
+{
+    return addPlan(name, PlannerDocument::emptyWeekPlan(m_document.settings.slots), "command.plan.create");
+}
+
+bool PlannerModel::duplicatePlan(const std::string& name)
+{
+    return addPlan(name, m_document.weekPlan, "command.plan.duplicate");
+}
+
+bool PlannerModel::renamePlan(const std::string& id, const std::string& name)
+{
+    if (!isPlanNameUsable(name, id))
+        return false;
+
+    auto after = content();
+    const auto trimmedName = ActivityName::trimmed(name);
+
+    if (id == after.activePlanId)
+    {
+        after.activePlanName = trimmedName;
+    }
+    else
+    {
+        const auto plan = std::ranges::find(after.savedPlans, id, &SavedPlan::id);
+        if (plan == after.savedPlans.end())
+            return false;
+
+        plan->name = trimmedName;
+    }
+
+    execute("command.plan.rename", std::move(after));
+    return true;
+}
+
+bool PlannerModel::deletePlan(const std::string& id)
+{
+    if (m_document.savedPlans.empty())
+        return false;
+
+    auto after = content();
+
+    if (id == after.activePlanId)
+    {
+        SavedPlan next = std::move(after.savedPlans.front());
+        after.savedPlans.erase(after.savedPlans.begin());
+        after.activePlanId = std::move(next.id);
+        after.activePlanName = std::move(next.name);
+        after.weekPlan = std::move(next.weekPlan);
+    }
+    else
+    {
+        const auto plan = std::ranges::find(after.savedPlans, id, &SavedPlan::id);
+        if (plan == after.savedPlans.end())
+            return false;
+
+        after.savedPlans.erase(plan);
+    }
+
+    execute("command.plan.delete", std::move(after));
+    return true;
+}
+
+bool PlannerModel::isPlanNameUsable(const std::string& name, const std::string& exceptId) const
+{
+    if (ActivityName::trimmed(name).empty())
+        return false;
+
+    std::vector<std::string> otherNames;
+    if (m_document.activePlanId != exceptId)
+        otherNames.push_back(m_document.activePlanName);
+
+    for (const auto& plan : m_document.savedPlans)
+    {
+        if (plan.id != exceptId)
+            otherNames.push_back(plan.name);
+    }
+
+    return !ActivityName::isTaken(name, otherNames);
+}
+
+bool PlannerModel::addPlan(const std::string& name, WeekPlan weekPlan, const char* descriptionKey)
+{
+    if (!isPlanNameUsable(name, {}))
+        return false;
+
+    auto after = content();
+    after.savedPlans.push_back(SavedPlan{ after.activePlanId, after.activePlanName, std::move(after.weekPlan) });
+    after.activePlanId = stapik::domain::generateId();
+    after.activePlanName = ActivityName::trimmed(name);
+    after.weekPlan = std::move(weekPlan);
+
+    execute(descriptionKey, std::move(after));
     return true;
 }
 
@@ -324,6 +502,11 @@ sigc::signal<void()>& PlannerModel::signalWeekPlanChanged()
     return m_signalWeekPlanChanged;
 }
 
+sigc::signal<void()>& PlannerModel::signalPlansChanged()
+{
+    return m_signalPlansChanged;
+}
+
 sigc::signal<void(stapik::sync::SyncStatus)>& PlannerModel::signalCloudStatusChanged()
 {
     return m_signalCloudStatusChanged;
@@ -346,7 +529,14 @@ sigc::signal<void(const std::string&)>& PlannerModel::signalSaveFailed()
 
 PlannerModel::Content PlannerModel::content() const
 {
-    return Content{ .settings = m_document.settings, .activities = m_document.activities, .weekPlan = m_document.weekPlan };
+    return Content{
+        .settings = m_document.settings,
+        .activities = m_document.activities,
+        .weekPlan = m_document.weekPlan,
+        .activePlanId = m_document.activePlanId,
+        .activePlanName = m_document.activePlanName,
+        .savedPlans = m_document.savedPlans
+    };
 }
 
 void PlannerModel::execute(const char* descriptionKey, Content after, const bool announceWeekPlan)
@@ -363,10 +553,15 @@ void PlannerModel::restoreContent(const Content& content, const bool announceWee
     const bool activitiesChanged = m_document.activities != content.activities;
     const bool settingsChanged = m_document.settings != content.settings;
     const bool weekPlanChanged = m_document.weekPlan != content.weekPlan;
+    const bool plansChanged = planIdentities(m_document.activePlanId, m_document.activePlanName, m_document.savedPlans)
+        != planIdentities(content.activePlanId, content.activePlanName, content.savedPlans);
 
     m_document.settings = content.settings;
     m_document.activities = content.activities;
     m_document.weekPlan = content.weekPlan;
+    m_document.activePlanId = content.activePlanId;
+    m_document.activePlanName = content.activePlanName;
+    m_document.savedPlans = content.savedPlans;
     persist();
 
     if (activitiesChanged)
@@ -377,6 +572,9 @@ void PlannerModel::restoreContent(const Content& content, const bool announceWee
 
     if (weekPlanChanged && announceWeekPlan)
         m_signalWeekPlanChanged.emit();
+
+    if (plansChanged)
+        m_signalPlansChanged.emit();
 }
 
 PlannerDocument::TimePoint PlannerModel::nextUpdateTime() const
@@ -438,6 +636,7 @@ void PlannerModel::replaceWithCloudDocument(const CloudOutcome& outcome)
     m_signalActivitiesChanged.emit();
     m_signalSettingsChanged.emit();
     m_signalWeekPlanChanged.emit();
+    m_signalPlansChanged.emit();
 }
 
 void PlannerModel::pushLocalEditAfterTheOutcomeIsHandled()

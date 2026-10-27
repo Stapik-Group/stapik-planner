@@ -27,6 +27,13 @@ public:
     using TimePoint = std::chrono::system_clock::time_point;
 
     // The name of the cloud slot. It identifies the planner document on the server, so it must not change.
+    struct PlanSummary
+    {
+        std::string id;
+        std::string name;
+        bool active;
+    };
+
     static constexpr auto CLOUD_SLOT_KEY = "planner.json";
     static constexpr std::chrono::milliseconds CLOUD_FLUSH_TIMEOUT{ 5000 };
 
@@ -52,6 +59,15 @@ public:
     bool copyDay(Weekday from, Weekday to);
     bool clearDay(Weekday weekday);
 
+    [[nodiscard]] std::vector<PlanSummary> plans() const;
+    [[nodiscard]] const std::string& activePlanId() const;
+    [[nodiscard]] const std::string& activePlanName() const;
+    bool switchPlan(const std::string& id);
+    bool createPlan(const std::string& name);
+    bool duplicatePlan(const std::string& name);
+    bool renamePlan(const std::string& id, const std::string& name);
+    bool deletePlan(const std::string& id);
+
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 
     [[nodiscard]] std::vector<stapik::document::BackupInfo> listBackups() const;
@@ -68,6 +84,7 @@ public:
     sigc::signal<void()>& signalActivitiesChanged();
     sigc::signal<void()>& signalSettingsChanged();
     sigc::signal<void()>& signalWeekPlanChanged();
+    sigc::signal<void()>& signalPlansChanged();
     sigc::signal<void(stapik::sync::SyncStatus)>& signalCloudStatusChanged();
     sigc::signal<void(const CloudOutcome&)>& signalCloudOutcome();
     sigc::signal<void(TimePoint)>& signalCloudApiKeyExpiring();
@@ -78,6 +95,9 @@ private:
         Settings settings;
         Activities activities;
         WeekPlan weekPlan;
+        std::string activePlanId;
+        std::string activePlanName;
+        std::vector<SavedPlan> savedPlans;
 
         [[nodiscard]] bool operator==(const Content&) const = default;
     };
@@ -93,6 +113,7 @@ private:
     sigc::signal<void()> m_signalActivitiesChanged;
     sigc::signal<void()> m_signalSettingsChanged;
     sigc::signal<void()> m_signalWeekPlanChanged;
+    sigc::signal<void()> m_signalPlansChanged;
     sigc::signal<void(stapik::sync::SyncStatus)> m_signalCloudStatusChanged;
     sigc::signal<void(const CloudOutcome&)> m_signalCloudOutcome;
     sigc::signal<void(TimePoint)> m_signalCloudApiKeyExpiring;
@@ -101,6 +122,8 @@ private:
     bool m_saveFailing = false;
 
     [[nodiscard]] Content content() const;
+    [[nodiscard]] bool isPlanNameUsable(const std::string& name, const std::string& exceptId) const;
+    bool addPlan(const std::string& name, WeekPlan weekPlan, const char* descriptionKey);
     bool replaceDay(Weekday weekday, DayPlan dayPlan, const char* descriptionKey, bool announceWeekPlan);
     void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);
     void restoreContent(const Content& content, bool announceWeekPlan);

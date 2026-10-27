@@ -1,8 +1,12 @@
 #include "MainWindow.hpp"
 
+#include "../widget/PlanLabel.hpp"
+
 #include "stapik/locale/DateFormatter.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
+
+#include <format>
 
 MainWindow::MainWindow(const stapik::theme::ThemeRegistry& themes) :
     m_mainBox(Gtk::Orientation::VERTICAL, 0),
@@ -18,9 +22,22 @@ MainWindow::MainWindow(const stapik::theme::ThemeRegistry& themes) :
 
 void MainWindow::init()
 {
-    set_title(WINDOW_TITLE);
+    updateTitle();
+    m_model.signalPlansChanged().connect([this] { updateTitle(); });
+    LocaleManager::instance().signalLocaleChanged().connect([this] { updateTitle(); });
     set_default_size(DEFAULT_WIDTH, DEFAULT_HEIGHT);
     set_child(m_mainBox);
+}
+
+void MainWindow::updateTitle()
+{
+    if (m_model.plans().size() < 2)
+    {
+        set_title(WINDOW_TITLE);
+        return;
+    }
+
+    set_title(std::format("{} – {}", WINDOW_TITLE, planDisplayName(m_model.activePlanName())));
 }
 
 void MainWindow::initLayout()

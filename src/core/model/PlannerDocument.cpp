@@ -17,20 +17,6 @@ namespace
 {
     using SlotList = std::vector<std::optional<Activity>>;
 
-    WeekPlan createEmptyWeekPlan(const int slotsCount)
-    {
-        using enum Weekday;
-        return WeekPlan{
-            DayPlan{ MONDAY, slotsCount },
-            DayPlan{ TUESDAY, slotsCount },
-            DayPlan{ WEDNESDAY, slotsCount },
-            DayPlan{ THURSDAY, slotsCount },
-            DayPlan{ FRIDAY, slotsCount },
-            DayPlan{ SATURDAY, slotsCount },
-            DayPlan{ SUNDAY, slotsCount }
-        };
-    }
-
     nlohmann::json activityToJson(const Activity& activity)
     {
         return {
@@ -206,7 +192,7 @@ namespace
 
     WeekPlan weekPlanFromJson(const nlohmann::json& json, const int slotsCount, const Activities& activities)
     {
-        auto weekPlan = createEmptyWeekPlan(slotsCount);
+        auto weekPlan = PlannerDocument::emptyWeekPlan(slotsCount);
         if (!json.contains("weekPlan"))
             return weekPlan;
 
@@ -222,6 +208,69 @@ namespace
 
         return weekPlan;
     }
+
+    nlohmann::json savedPlansToJson(const std::vector<SavedPlan>& plans)
+    {
+        auto json = nlohmann::json::array();
+        for (const auto& plan : plans)
+        {
+            json.push_back({
+                { "id", plan.id },
+                { "name", plan.name },
+                { "weekPlan", weekPlanToJson(plan.weekPlan) }
+            });
+        }
+
+        return json;
+    }
+
+    std::vector<SavedPlan> savedPlansFromJson(const nlohmann::json& json, const int slotsCount, const Activities& activities)
+    {
+        std::vector<SavedPlan> plans;
+        if (!json.contains("savedPlans"))
+            return plans;
+
+        for (const auto& planJson : json.at("savedPlans"))
+        {
+            plans.push_back(SavedPlan{
+                .id = planJson.value("id", std::string{}),
+                .name = planJson.value("name", std::string{}),
+                .weekPlan = weekPlanFromJson(planJson, slotsCount, activities)
+            });
+        }
+
+        return plans;
+    }
+
+    void assignMissingPlanIds(const std::string& activePlanId, std::vector<SavedPlan>& plans)
+    {
+        std::unordered_set<std::string> usedIds{ activePlanId };
+        for (auto& plan : plans)
+        {
+            if (!plan.id.empty() && usedIds.insert(plan.id).second)
+                continue;
+
+            do
+            {
+                plan.id = stapik::domain::generateId();
+            }
+            while (!usedIds.insert(plan.id).second);
+        }
+    }
+}
+
+WeekPlan PlannerDocument::emptyWeekPlan(const int slotsCount)
+{
+    using enum Weekday;
+    return WeekPlan{
+        DayPlan{ MONDAY, slotsCount },
+        DayPlan{ TUESDAY, slotsCount },
+        DayPlan{ WEDNESDAY, slotsCount },
+        DayPlan{ THURSDAY, slotsCount },
+        DayPlan{ FRIDAY, slotsCount },
+        DayPlan{ SATURDAY, slotsCount },
+        DayPlan{ SUNDAY, slotsCount }
+    };
 }
 
 PlannerDocument PlannerDocument::createDefault()
@@ -229,9 +278,12 @@ PlannerDocument PlannerDocument::createDefault()
     return PlannerDocument{
         .settings = Settings{},
         .activities = Activities{},
-        .weekPlan = createEmptyWeekPlan(Settings::DEFAULT_SLOTS),
+        .weekPlan = emptyWeekPlan(Settings::DEFAULT_SLOTS),
         .updatedAt = TimePoint{},
-        .cloudBaseline = std::nullopt
+        .cloudBaseline = std::nullopt,
+        .activePlanId = DEFAULT_PLAN_ID,
+        .activePlanName = {},
+        .savedPlans = {}
     };
 }
 
@@ -248,12 +300,29 @@ PlannerDocument PlannerDocument::fromJson(const nlohmann::json& json)
     auto activities = activitiesFromJson(json);
     auto weekPlan = weekPlanFromJson(json, settings.slots, activities);
 
+    std::string activePlanId = DEFAULT_PLAN_ID;
+    std::string activePlanName;
+    if (json.contains("plan"))
+    {
+        const auto& planJson = json.at("plan");
+        activePlanId = planJson.value("id", std::string{});
+        activePlanName = planJson.value("name", std::string{});
+        if (activePlanId.empty())
+            activePlanId = DEFAULT_PLAN_ID;
+    }
+
+    auto savedPlans = savedPlansFromJson(json, settings.slots, activities);
+    assignMissingPlanIds(activePlanId, savedPlans);
+
     return PlannerDocument{
         .settings = settings,
         .activities = std::move(activities),
         .weekPlan = std::move(weekPlan),
         .updatedAt = updatedAt,
-        .cloudBaseline = std::nullopt
+        .cloudBaseline = std::nullopt,
+        .activePlanId = std::move(activePlanId),
+        .activePlanName = std::move(activePlanName),
+        .savedPlans = std::move(savedPlans)
     };
 }
 
@@ -264,6 +333,8 @@ nlohmann::json PlannerDocument::toJson() const
     json["settings"] = settingsToJson(settings);
     json["activities"] = activitiesToJson(activities);
     json["weekPlan"] = weekPlanToJson(weekPlan);
+    json["plan"] = { { "id", activePlanId }, { "name", activePlanName } };
+    json["savedPlans"] = savedPlansToJson(savedPlans);
 
     return json;
 }

@@ -54,6 +54,7 @@ stapik_add_application(
         SOURCES
                 src/app/PlannerAppInfo.cpp
                 src/ui/action/MenuActionHandler.cpp
+                src/ui/action/PlanActionHandler.cpp
                 src/ui/dialog/ActivityDialog.cpp
                 src/ui/view/ActivityCatalogView.cpp
                 src/ui/view/ScheduleView.cpp

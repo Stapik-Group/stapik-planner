@@ -14,7 +14,7 @@
 class PlannerStorage
 {
 public:
-    static constexpr int SCHEMA_VERSION = 1;
+    static constexpr int SCHEMA_VERSION = 2;
     static constexpr int BACKUP_COUNT = 5;
     static constexpr std::chrono::minutes BACKUP_INTERVAL{ 5 };
 

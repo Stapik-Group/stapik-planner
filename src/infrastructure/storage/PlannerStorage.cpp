@@ -41,6 +41,7 @@ namespace
     {
         stapik::document::SchemaMigrator migrator(PlannerStorage::SCHEMA_VERSION);
         migrator.addStep(0, migrateLegacyEnvelope);
+        migrator.addStep(1, [](nlohmann::json&) {});
         return migrator;
     }
 }

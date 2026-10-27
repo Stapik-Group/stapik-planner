@@ -586,3 +586,150 @@ TEST_F(PlannerModelTest, ClearingADayEmptiesItAndCanBeUndone)
     EXPECT_TRUE(m_model->undoStack().undo());
     EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
 }
+
+TEST_F(PlannerModelTest, CreatingAPlanSwitchesToAnEmptyPlanAndKeepsTheOldOne)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    planInFirstSlot(Weekday::MONDAY, 0);
+    const auto originalId = m_model->activePlanId();
+
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+
+    EXPECT_EQ(m_model->activePlanName(), "Holiday");
+    EXPECT_NE(m_model->activePlanId(), originalId);
+    EXPECT_FALSE(firstSlotOf(Weekday::MONDAY).has_value());
+    ASSERT_EQ(m_model->plans().size(), 2U);
+
+    ASSERT_TRUE(m_model->switchPlan(originalId));
+    ASSERT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->name, "Gym");
+}
+
+TEST_F(PlannerModelTest, DuplicatingAPlanCopiesTheWeekAndTheCopiesAreIndependent)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    planInFirstSlot(Weekday::MONDAY, 0);
+    const auto originalId = m_model->activePlanId();
+
+    ASSERT_TRUE(m_model->duplicatePlan("Copy"));
+    EXPECT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    planInFirstSlot(Weekday::TUESDAY, 0);
+
+    ASSERT_TRUE(m_model->switchPlan(originalId));
+    EXPECT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_FALSE(firstSlotOf(Weekday::TUESDAY).has_value());
+}
+
+TEST_F(PlannerModelTest, PlanNamesMustBeFilledAndUnique)
+{
+    EXPECT_FALSE(m_model->createPlan("   "));
+    ASSERT_TRUE(m_model->createPlan("  Holiday "));
+    EXPECT_EQ(m_model->activePlanName(), "Holiday");
+
+    EXPECT_FALSE(m_model->createPlan("holiday"));
+    EXPECT_FALSE(m_model->duplicatePlan("HOLIDAY"));
+    EXPECT_EQ(m_model->plans().size(), 2U);
+}
+
+TEST_F(PlannerModelTest, RenamingAPlanKeepsItsOwnNameAvailableAndRejectsTakenOnes)
+{
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+    const auto holidayId = m_model->activePlanId();
+    ASSERT_TRUE(m_model->renamePlan(m_model->plans().back().id, "Work"));
+
+    EXPECT_FALSE(m_model->renamePlan(holidayId, "work"));
+    EXPECT_TRUE(m_model->renamePlan(holidayId, "HOLIDAY"));
+    EXPECT_EQ(m_model->activePlanName(), "HOLIDAY");
+}
+
+TEST_F(PlannerModelTest, DeletingAPlanSwitchesAwayFromTheActiveOneAndTheLastPlanStays)
+{
+    const auto originalId = m_model->activePlanId();
+    EXPECT_FALSE(m_model->deletePlan(originalId));
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+    const auto holidayId = m_model->activePlanId();
+
+    ASSERT_TRUE(m_model->deletePlan(holidayId));
+
+    EXPECT_EQ(m_model->activePlanId(), originalId);
+    EXPECT_EQ(m_model->plans().size(), 1U);
+    EXPECT_FALSE(m_model->switchPlan(holidayId));
+}
+
+TEST_F(PlannerModelTest, DeletingAPlanThatIsNotActiveKeepsTheActiveOne)
+{
+    const auto originalId = m_model->activePlanId();
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+    const auto holidayId = m_model->activePlanId();
+
+    ASSERT_TRUE(m_model->deletePlan(originalId));
+
+    EXPECT_EQ(m_model->activePlanId(), holidayId);
+    EXPECT_EQ(m_model->plans().size(), 1U);
+}
+
+TEST_F(PlannerModelTest, SwitchingAndCreatingAPlanCanBeUndone)
+{
+    const auto originalId = m_model->activePlanId();
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+
+    EXPECT_TRUE(m_model->undoStack().undo());
+
+    EXPECT_EQ(m_model->activePlanId(), originalId);
+    EXPECT_EQ(m_model->plans().size(), 1U);
+}
+
+TEST_F(PlannerModelTest, ActivityChangesReachEveryPlan)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::LIGHT });
+    planInFirstSlot(Weekday::MONDAY, 0);
+    const auto originalId = m_model->activePlanId();
+    ASSERT_TRUE(m_model->duplicatePlan("Copy"));
+    ASSERT_TRUE(m_model->switchPlan(originalId));
+
+    ASSERT_TRUE(m_model->updateActivity(0, Activity{ .name = "Gym", .difficulty = Difficulty::HARD }));
+    ASSERT_TRUE(m_model->switchPlan(m_model->plans().back().id));
+
+    ASSERT_TRUE(firstSlotOf(Weekday::MONDAY).has_value());
+    EXPECT_EQ(firstSlotOf(Weekday::MONDAY)->difficulty, Difficulty::HARD);
+
+    m_model->removeActivity(0);
+    EXPECT_FALSE(firstSlotOf(Weekday::MONDAY).has_value());
+    ASSERT_TRUE(m_model->switchPlan(originalId));
+    EXPECT_FALSE(firstSlotOf(Weekday::MONDAY).has_value());
+}
+
+TEST_F(PlannerModelTest, ChangingTheSlotCountResizesEveryPlan)
+{
+    ASSERT_TRUE(m_model->duplicatePlan("Copy"));
+    const auto copyId = m_model->activePlanId();
+
+    EXPECT_FALSE(m_model->updateSlotCount(3));
+    ASSERT_TRUE(m_model->switchPlan(m_model->plans().back().id));
+
+    EXPECT_EQ(m_model->weekPlan()[0].slots.size(), 3U);
+    EXPECT_NE(m_model->activePlanId(), copyId);
+}
+
+TEST_F(PlannerModelTest, ThePlansAreAnnouncedWhenTheyChange)
+{
+    int announcements = 0;
+    m_model->signalPlansChanged().connect([&announcements] { ++announcements; });
+
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+    ASSERT_TRUE(m_model->renamePlan(m_model->activePlanId(), "Trip"));
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+
+    EXPECT_EQ(announcements, 2);
+}
+
+TEST_F(PlannerModelTest, PlansSurviveARestart)
+{
+    ASSERT_TRUE(m_model->createPlan("Holiday"));
+    m_model.reset();
+
+    m_model = std::make_unique<PlannerModel>();
+
+    ASSERT_EQ(m_model->plans().size(), 2U);
+    EXPECT_EQ(m_model->activePlanName(), "Holiday");
+}
