@@ -81,7 +81,7 @@ void ScheduleDayColumn::onSlotChanged()
 {
     const int load = getDayPlan().totalLoad();
 
-    m_loadBar.setLoad(std::min(load, DayPlan::LOAD_LIMIT));
+    m_loadBar.setLoad(load);
 
     const bool limitReached = load >= DayPlan::LOAD_LIMIT;
     for (auto& slot : m_slots)
