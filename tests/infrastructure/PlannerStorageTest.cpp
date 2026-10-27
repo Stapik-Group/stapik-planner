@@ -1,5 +1,6 @@
 #include "infrastructure/storage/PlannerStorage.hpp"
 
+#include "support/FakeClock.hpp"
 #include "support/PlannerTestDocuments.hpp"
 #include "support/ScopedEnvironment.hpp"
 
@@ -7,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -250,4 +252,43 @@ TEST_F(PlannerStorageTest, DefaultFilePathLivesInTheUserDataDirectoryOfTheApplic
     EXPECT_EQ(PlannerStorage::defaultFilePath(), m_directory / "stapikplannertest" / "planner.json");
 
     stapik::app::AppContext::resetForTests();
+}
+
+TEST_F(PlannerStorageTest, ABackupIsNotRotatedAgainBeforeTheIntervalPasses)
+{
+    stapik::test::FakeClock clock(std::chrono::system_clock::now());
+    const PlannerStorage storage(m_filePath, clock);
+    const auto first = makeSampleDocument(1);
+    const auto second = makeSampleDocument(2);
+    const auto third = makeSampleDocument(3);
+
+    ASSERT_TRUE(storage.save(first));
+    ASSERT_TRUE(storage.save(second));
+    ASSERT_TRUE(storage.save(third));
+
+    const auto backups = storage.listBackups();
+    ASSERT_EQ(backups.size(), 1U);
+    EXPECT_EQ(storage.loadBackup(backups[0]).document->toJson(), first.toJson());
+    EXPECT_EQ(storage.load().toJson(), third.toJson());
+}
+
+TEST_F(PlannerStorageTest, ABackupIsRotatedAgainOnceTheIntervalHasPassed)
+{
+    stapik::test::FakeClock clock(std::chrono::system_clock::now());
+    const PlannerStorage storage(m_filePath, clock);
+    const auto first = makeSampleDocument(1);
+    const auto second = makeSampleDocument(2);
+    const auto third = makeSampleDocument(3);
+    const auto fourth = makeSampleDocument(4);
+
+    ASSERT_TRUE(storage.save(first));
+    ASSERT_TRUE(storage.save(second));
+    ASSERT_TRUE(storage.save(third));
+    clock.advance(PlannerStorage::BACKUP_INTERVAL + std::chrono::minutes{ 1 });
+    ASSERT_TRUE(storage.save(fourth));
+
+    const auto backups = storage.listBackups();
+    ASSERT_EQ(backups.size(), 2U);
+    EXPECT_EQ(storage.loadBackup(backups[0]).document->toJson(), third.toJson());
+    EXPECT_EQ(storage.loadBackup(backups[1]).document->toJson(), first.toJson());
 }

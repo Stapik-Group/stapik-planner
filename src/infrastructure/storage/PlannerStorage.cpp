@@ -86,7 +86,16 @@ PlannerDocument PlannerStorage::load() const
 
 stapik::storage::FileResult PlannerStorage::save(const PlannerDocument& document) const
 {
-    return m_documentFile.save(document);
+    if (isBackupDue())
+        return m_documentFile.save(document);
+
+    return m_documentFile.exportTo(document, m_documentFile.filePath());
+}
+
+bool PlannerStorage::isBackupDue() const
+{
+    const auto backups = m_documentFile.listBackups();
+    return backups.empty() || m_clock.now() - backups.front().savedAt >= BACKUP_INTERVAL;
 }
 
 std::vector<stapik::document::BackupInfo> PlannerStorage::listBackups() const
