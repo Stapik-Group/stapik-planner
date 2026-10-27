@@ -1,5 +1,6 @@
 #include "MainWindow.hpp"
 
+#include "stapik/locale/DateFormatter.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
@@ -47,6 +48,7 @@ void MainWindow::initCloud()
 
     m_model.signalCloudStatusChanged().connect(sigc::mem_fun(*this, &MainWindow::onCloudStatusChanged));
     m_model.signalCloudOutcome().connect(sigc::mem_fun(*this, &MainWindow::onCloudOutcome));
+    m_model.signalCloudApiKeyExpiring().connect(sigc::mem_fun(*this, &MainWindow::onApiKeyExpiring));
     signal_close_request().connect(sigc::mem_fun(*this, &MainWindow::onCloseRequest), false);
 }
 
@@ -60,8 +62,16 @@ bool MainWindow::onCloseRequest()
 
 void MainWindow::onCloudStatusChanged(const stapik::sync::SyncStatus status)
 {
-    m_syncStatus.set_visible(true);
+    m_syncStatus.set_visible(m_model.isCloudConnected());
     m_syncStatus.setStatus(status);
+}
+
+void MainWindow::onApiKeyExpiring(const PlannerModel::TimePoint expiresAt)
+{
+    const auto& localeManager = LocaleManager::instance();
+    const auto date = stapik::locale::formatDate(stapik::locale::toLocalTime(expiresAt), localeManager.languageCode());
+
+    showMessageDialog(*this, localeManager.translate("cloud.apiKeyExpiring.header"), localeManager.translate("cloud.apiKeyExpiring", { { "date", date } }));
 }
 
 void MainWindow::onCloudOutcome(const PlannerModel::CloudOutcome& outcome)

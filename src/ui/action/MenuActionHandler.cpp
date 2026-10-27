@@ -1,8 +1,29 @@
 #include "MenuActionHandler.hpp"
 
+#include "stapik/app/AppContext.hpp"
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/storage/CloudStorageConfigStorage.hpp"
+#include "stapik/ui/dialog/ConfirmDialog.hpp"
 #include "stapik/ui/dialog/ConnectDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
+
+#include <format>
+#include <string>
+
+namespace
+{
+    std::string connectedSecondaryText()
+    {
+        const auto& localeManager = LocaleManager::instance();
+        const auto& applicationName = stapik::app::AppContext::instance().info().internalName;
+        auto text = localeManager.translate("cloud.connected.secondary");
+
+        if (CloudStorageConfigStorage::secretsKeptInConfigFile(applicationName).any())
+            text = std::format("{}\n\n{}", text, localeManager.translate("cloud.plainFileSecrets"));
+
+        return text;
+    }
+}
 
 MenuActionHandler::MenuActionHandler(Gtk::ApplicationWindow &window, PlannerModel& model) :
     m_window(window),
@@ -12,14 +33,18 @@ MenuActionHandler::MenuActionHandler(Gtk::ApplicationWindow &window, PlannerMode
 MenuActionHandler::~MenuActionHandler()
 {
     m_outcomeConnection.disconnect();
+    m_statusConnection.disconnect();
 }
 
 void MenuActionHandler::registerActions()
 {
     m_window.add_action("quit", sigc::mem_fun(*this, &MenuActionHandler::onActionQuit));
     m_window.add_action("connect", sigc::mem_fun(*this, &MenuActionHandler::onActionConnect));
+    m_disconnectAction = m_window.add_action("disconnect", sigc::mem_fun(*this, &MenuActionHandler::onActionDisconnect));
     m_window.add_action("sync", sigc::mem_fun(*this, &MenuActionHandler::onActionSync));
 
+    m_disconnectAction->set_enabled(m_model.isCloudConnected());
+    m_statusConnection = m_model.signalCloudStatusChanged().connect([this](const stapik::sync::SyncStatus) { m_disconnectAction->set_enabled(m_model.isCloudConnected()); });
     m_outcomeConnection = m_model.signalCloudOutcome().connect(sigc::mem_fun(*this, &MenuActionHandler::showConnectFeedback));
 }
 
@@ -32,6 +57,21 @@ void MenuActionHandler::onActionQuit()
 void MenuActionHandler::onActionConnect()
 {
     showConnectDialog(m_window, m_model.cloudConfig(), [this](const CloudStorageConfig& config) { handleConfirmedConfig(config); });
+}
+
+void MenuActionHandler::onActionDisconnect()
+{
+    const auto& localeManager = LocaleManager::instance();
+
+    showConfirmDialog(
+        m_window,
+        ConfirmDialogOptions{
+            .title = localeManager.translate("dialog.disconnect.title"),
+            .message = localeManager.translate("dialog.disconnect.message"),
+            .confirmLabel = localeManager.translate("dialog.disconnect.button"),
+            .destructive = true
+        },
+        [this] { m_model.disconnectCloud(); });
 }
 
 void MenuActionHandler::onActionSync()
@@ -67,7 +107,7 @@ void MenuActionHandler::showConnectFeedback(const PlannerModel::CloudOutcome& ou
     {
         case SyncState::Synchronized:
         case SyncState::ServerWon:
-            showMessageDialog(m_window, localeManager.translate("cloud.connected"), localeManager.translate("cloud.connected.secondary"));
+            showMessageDialog(m_window, localeManager.translate("cloud.connected"), connectedSecondaryText());
             break;
         case SyncState::OfflineKeptLocal:
         case SyncState::RemoteUnreadable:

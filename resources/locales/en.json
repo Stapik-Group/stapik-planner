@@ -29,6 +29,12 @@
   "cloud.conflict.header": "Cloud version kept",
   "cloud.conflict.secondary": "Another device saved a newer version of the planner. Your latest changes were replaced by it.",
   "settings.checkForUpdates": "Check for updates",
+  "menu.file.disconnect": "Disconnect from cloud",
+  "dialog.disconnect.title": "Disconnect from cloud?",
+  "dialog.disconnect.message": "The API key and the connection settings will be removed from this device. The planner on this device and in the cloud stays as it is.",
+  "dialog.disconnect.button": "Disconnect",
+  "cloud.plainFileSecrets": "No system keyring is available, so the API key and the passphrase are kept in a file readable only by your user.",
+  "cloud.apiKeyExpiring.header": "Cloud API key expires soon",
   "button.ok": "OK",
   "button.cancel": "Cancel"
 }

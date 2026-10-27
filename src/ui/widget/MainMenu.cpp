@@ -26,6 +26,7 @@ MainMenu::MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const st
     m_standardMenu.settings().addBool("settings.checkForUpdates", m_updateCheckSetting);
     initSlotCountAction();
 
+    m_standardMenu.addToMenu(StandardMenu::Target::File, [](Gio::Menu& fileMenu) { buildDisconnectMenu(fileMenu); });
     m_standardMenu.addToMenu(StandardMenu::Target::Settings, [this](Gio::Menu& settingsMenu) { buildSlotCountMenu(settingsMenu); });
 }
 
@@ -37,6 +38,13 @@ MainMenu::~MainMenu()
 Gtk::PopoverMenuBar& MainMenu::getMenuBar()
 {
     return m_standardMenu.menuBar();
+}
+
+void MainMenu::buildDisconnectMenu(Gio::Menu& fileMenu)
+{
+    const auto disconnectSection = Gio::Menu::create();
+    disconnectSection->append(LocaleManager::instance().translate("menu.file.disconnect"), "win.disconnect");
+    fileMenu.append_section(disconnectSection);
 }
 
 void MainMenu::initSlotCountAction()

@@ -86,6 +86,7 @@ PlannerModel::PlannerModel(std::unique_ptr<PlannerStorage> storage, stapik::sync
 {
     m_cloudSession.signalStatusChanged().connect([this](const stapik::sync::SyncStatus status) { m_signalCloudStatusChanged.emit(status); });
     m_cloudSession.signalOutcome().connect([this](const CloudOutcome& outcome) { onCloudOutcome(outcome); });
+    m_cloudSession.signalApiKeyExpiring().connect([this](const TimePoint expiresAt) { m_signalCloudApiKeyExpiring.emit(expiresAt); });
 
     if (m_cloudSession.isConnected())
         m_cloudSession.syncNow(m_document);
@@ -194,6 +195,13 @@ void PlannerModel::syncCloud()
     m_cloudSession.syncNow(m_document);
 }
 
+void PlannerModel::disconnectCloud()
+{
+    m_deferredPush.disconnect();
+    m_cloudSession.disconnect();
+    m_document.cloudBaseline.reset();
+}
+
 void PlannerModel::flushCloud(const std::chrono::milliseconds timeout)
 {
     m_cloudSession.flushAndWait(timeout);
@@ -237,6 +245,11 @@ sigc::signal<void(stapik::sync::SyncStatus)>& PlannerModel::signalCloudStatusCha
 sigc::signal<void(const PlannerModel::CloudOutcome&)>& PlannerModel::signalCloudOutcome()
 {
     return m_signalCloudOutcome;
+}
+
+sigc::signal<void(PlannerModel::TimePoint)>& PlannerModel::signalCloudApiKeyExpiring()
+{
+    return m_signalCloudApiKeyExpiring;
 }
 
 PlannerModel::Content PlannerModel::content() const

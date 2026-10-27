@@ -20,6 +20,7 @@ class PlannerModel
 {
 public:
     using CloudOutcome = stapik::sync::SyncOutcome<PlannerDocument>;
+    using TimePoint = std::chrono::system_clock::time_point;
 
     // The name of the cloud slot. It identifies the planner document on the server, so it must not change.
     static constexpr auto CLOUD_SLOT_KEY = "planner.json";
@@ -46,6 +47,7 @@ public:
 
     [[nodiscard]] bool connectCloud(const CloudStorageConfig& config);
     void syncCloud();
+    void disconnectCloud();
     void flushCloud(std::chrono::milliseconds timeout = CLOUD_FLUSH_TIMEOUT);
     [[nodiscard]] bool isCloudConnected() const;
     [[nodiscard]] const std::optional<CloudStorageConfig>& cloudConfig() const;
@@ -56,6 +58,7 @@ public:
     sigc::signal<void()>& signalWeekPlanChanged();
     sigc::signal<void(stapik::sync::SyncStatus)>& signalCloudStatusChanged();
     sigc::signal<void(const CloudOutcome&)>& signalCloudOutcome();
+    sigc::signal<void(TimePoint)>& signalCloudApiKeyExpiring();
 private:
     struct Content
     {
@@ -78,6 +81,7 @@ private:
     sigc::signal<void()> m_signalWeekPlanChanged;
     sigc::signal<void(stapik::sync::SyncStatus)> m_signalCloudStatusChanged;
     sigc::signal<void(const CloudOutcome&)> m_signalCloudOutcome;
+    sigc::signal<void(TimePoint)> m_signalCloudApiKeyExpiring;
     sigc::connection m_deferredPush;
 
     [[nodiscard]] Content content() const;

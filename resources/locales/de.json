@@ -29,6 +29,12 @@
   "cloud.conflict.header": "Cloud-Version beibehalten",
   "cloud.conflict.secondary": "Ein anderes Gerät hat eine neuere Version des Planers gespeichert. Ihre letzten Änderungen wurden dadurch ersetzt.",
   "settings.checkForUpdates": "Nach Updates suchen",
+  "menu.file.disconnect": "Von der Cloud trennen",
+  "dialog.disconnect.title": "Von der Cloud trennen?",
+  "dialog.disconnect.message": "Der API-Schlüssel und die Verbindungseinstellungen werden von diesem Gerät entfernt. Der Planer auf diesem Gerät und in der Cloud bleibt unverändert.",
+  "dialog.disconnect.button": "Trennen",
+  "cloud.plainFileSecrets": "Es ist kein System-Schlüsselbund verfügbar, daher werden der API-Schlüssel und die Passphrase in einer Datei gespeichert, die nur für Ihren Benutzer lesbar ist.",
+  "cloud.apiKeyExpiring.header": "Cloud-API-Schlüssel läuft bald ab",
   "button.ok": "OK",
   "button.cancel": "Abbrechen"
 }
