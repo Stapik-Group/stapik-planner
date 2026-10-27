@@ -58,13 +58,12 @@ void ActivityCatalogView::refreshList()
     while (auto* child = m_listBox.get_first_child())
         m_listBox.remove(*child);
 
-    const auto& activities = m_model.activities();
-    for (int i = 0; i < static_cast<int>(activities.size()); ++i)
+    for (const auto& activity : m_model.activities())
     {
-        auto* row = Gtk::make_managed<ActivityCatalogItemRow>(activities[static_cast<std::size_t>(i)]);
+        auto* row = Gtk::make_managed<ActivityCatalogItemRow>(activity);
 
-        row->signalEditRequested().connect([this, i] { onEditRequested(i); });
-        row->signalDeleteRequested().connect([this, i] { onDeleteRequested(i); });
+        row->signalEditRequested().connect([this, id = activity.id] { onEditRequested(id); });
+        row->signalDeleteRequested().connect([this, id = activity.id] { onDeleteRequested(id); });
 
         m_listBox.append(*row);
     }
@@ -72,45 +71,44 @@ void ActivityCatalogView::refreshList()
 
 void ActivityCatalogView::onAddRequested()
 {
-    showActivityDialog(-1);
+    showActivityDialog(std::nullopt);
 }
 
-void ActivityCatalogView::onEditRequested(const int index)
+void ActivityCatalogView::onEditRequested(const std::string& id)
 {
-    showActivityDialog(index);
+    showActivityDialog(id);
 }
 
-void ActivityCatalogView::onDeleteRequested(const int index) const
+void ActivityCatalogView::onDeleteRequested(const std::string& id) const
 {
-    if (index < 0 || index >= static_cast<int>(m_model.activities().size()))
-        return;
-
-    m_model.removeActivity(static_cast<std::size_t>(index));
+    if (const auto index = m_model.findActivity(id); index.has_value())
+        m_model.removeActivity(*index);
 }
 
-void ActivityCatalogView::showActivityDialog(const int editIndex)
+void ActivityCatalogView::showActivityDialog(const std::optional<std::string>& editedId)
 {
     auto* window = dynamic_cast<Gtk::Window*>(get_root());
     if (window == nullptr)
         return;
 
-    ActivityDialog* dialog = editIndex >= 0
-        ? new ActivityDialog(*window, m_model.activities()[static_cast<std::size_t>(editIndex)])
+    const auto editedIndex = editedId.has_value() ? m_model.findActivity(*editedId) : std::nullopt;
+    if (editedId.has_value() && !editedIndex.has_value())
+        return;
+
+    ActivityDialog* dialog = editedIndex.has_value()
+        ? new ActivityDialog(*window, m_model.activities()[*editedIndex])
         : new ActivityDialog(*window);
 
-    dialog->signal_response().connect([this, window, dialog, editIndex](const int responseId)
+    dialog->signal_response().connect([this, window, dialog, editedId](const int responseId)
     {
         if (responseId == Gtk::ResponseType::OK)
         {
             if (auto result = dialog->getResult(); result.has_value())
             {
-                if (editIndex < 0)
+                if (editedId.has_value())
+                    saveEditedActivity(*window, *editedId, std::move(result.value()));
+                else
                     m_model.addActivity(std::move(result.value()));
-                else if (!m_model.updateActivity(static_cast<std::size_t>(editIndex), std::move(result.value())))
-                {
-                    const auto& localeManager = LocaleManager::instance();
-                    showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.activity"));
-                }
             }
         }
         dialog->hide();
@@ -118,4 +116,15 @@ void ActivityCatalogView::showActivityDialog(const int editIndex)
 
     deleteOnHide(dialog);
     dialog->show();
+}
+
+void ActivityCatalogView::saveEditedActivity(Gtk::Window& window, const std::string& id, Activity activity)
+{
+    const auto& localeManager = LocaleManager::instance();
+    const auto index = m_model.findActivity(id);
+
+    if (!index.has_value())
+        showMessageDialog(window, localeManager.translate("dialog.activity.edit"), localeManager.translate("dialog.activity.gone"));
+    else if (!m_model.updateActivity(*index, std::move(activity)))
+        showMessageDialog(window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.activity"));
 }

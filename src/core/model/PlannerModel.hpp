@@ -41,6 +41,8 @@ public:
     [[nodiscard]] const Activities& activities() const;
     [[nodiscard]] const WeekPlan& weekPlan() const;
 
+    [[nodiscard]] std::optional<std::size_t> findActivity(const std::string& id) const;
+
     void addActivity(Activity activity);
     bool updateActivity(std::size_t index, Activity activity);
     void removeActivity(std::size_t index);

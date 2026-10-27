@@ -43,6 +43,7 @@
   "dialog.dayLimit.title": "Tageslast-Limit",
   "dialog.dayLimit.slot": "Diese Aktivität passt nicht in den Tag: Die Last eines Tages darf 100 % nicht überschreiten.",
   "dialog.dayLimit.activity": "Die Änderung wurde nicht gespeichert: Mit dem neuen Schweregrad würde ein geplanter Tag 100 % überschreiten. Entfernen Sie die Aktivität zuerst aus diesem Tag.",
+  "dialog.activity.gone": "Diese Aktivität existiert nicht mehr: Eine neuere Version des Planers aus der Cloud hat den Katalog ersetzt.",
   "button.ok": "OK",
   "button.cancel": "Abbrechen"
 }

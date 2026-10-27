@@ -458,3 +458,17 @@ TEST_F(PlannerModelTest, AnOverloadedDayFromAFileCanBeRelievedButNotLoadedFurthe
     EXPECT_TRUE(m_model->updateDay(Weekday::MONDAY, day));
     EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
 }
+
+TEST_F(PlannerModelTest, AnActivityIsFoundByItsIdWhateverItsPosition)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    const auto readingId = m_model->activities()[1].id;
+
+    m_model->removeActivity(0);
+
+    const auto index = m_model->findActivity(readingId);
+    ASSERT_TRUE(index.has_value());
+    EXPECT_EQ(*index, 0U);
+    EXPECT_FALSE(m_model->findActivity("missing").has_value());
+}

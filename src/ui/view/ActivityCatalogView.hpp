@@ -5,6 +5,10 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <gtkmm/scrolledwindow.h>
+#include <gtkmm/window.h>
+
+#include <optional>
+#include <string>
 
 class ActivityCatalogView : public Gtk::Box
 {
@@ -23,8 +27,9 @@ private:
     void refreshList();
 
     void onAddRequested();
-    void onEditRequested(int index);
-    void onDeleteRequested(int index) const;
+    void onEditRequested(const std::string& id);
+    void onDeleteRequested(const std::string& id) const;
 
-    void showActivityDialog(int editIndex);
+    void showActivityDialog(const std::optional<std::string>& editedId);
+    void saveEditedActivity(Gtk::Window& window, const std::string& id, Activity activity);
 };

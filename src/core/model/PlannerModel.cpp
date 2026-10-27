@@ -9,6 +9,7 @@
 
 #include <glibmm/main.h>
 
+#include <algorithm>
 #include <chrono>
 #include <utility>
 
@@ -127,6 +128,15 @@ const Activities& PlannerModel::activities() const
 const WeekPlan& PlannerModel::weekPlan() const
 {
     return m_document.weekPlan;
+}
+
+std::optional<std::size_t> PlannerModel::findActivity(const std::string& id) const
+{
+    const auto found = std::ranges::find(m_document.activities, id, &Activity::id);
+    if (found == m_document.activities.end())
+        return std::nullopt;
+
+    return static_cast<std::size_t>(found - m_document.activities.begin());
 }
 
 void PlannerModel::addActivity(Activity activity)

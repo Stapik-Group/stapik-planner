@@ -43,6 +43,7 @@
   "dialog.dayLimit.title": "Day load limit",
   "dialog.dayLimit.slot": "This activity does not fit in the day: the load of a day cannot exceed 100%.",
   "dialog.dayLimit.activity": "The change was not saved: with the new difficulty a planned day would exceed 100%. Remove the activity from that day first.",
+  "dialog.activity.gone": "This activity no longer exists: a newer version of the planner from the cloud replaced the catalog.",
   "button.ok": "OK",
   "button.cancel": "Cancel"
 }
