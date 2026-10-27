@@ -139,6 +139,20 @@ std::optional<std::size_t> PlannerModel::findActivity(const std::string& id) con
     return static_cast<std::size_t>(found - m_document.activities.begin());
 }
 
+std::size_t PlannerModel::plannedSlotCount(const std::string& id) const
+{
+    std::size_t count = 0;
+    for (const auto& day : m_document.weekPlan)
+    {
+        count += static_cast<std::size_t>(std::ranges::count_if(day.slots, [&id](const std::optional<Activity>& slot)
+        {
+            return slot.has_value() && slot->id == id;
+        }));
+    }
+
+    return count;
+}
+
 void PlannerModel::addActivity(Activity activity)
 {
     auto after = content();

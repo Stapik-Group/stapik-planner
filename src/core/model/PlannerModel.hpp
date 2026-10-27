@@ -42,6 +42,7 @@ public:
     [[nodiscard]] const WeekPlan& weekPlan() const;
 
     [[nodiscard]] std::optional<std::size_t> findActivity(const std::string& id) const;
+    [[nodiscard]] std::size_t plannedSlotCount(const std::string& id) const;
 
     void addActivity(Activity activity);
     bool updateActivity(std::size_t index, Activity activity);

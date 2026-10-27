@@ -45,6 +45,9 @@
   "dialog.dayLimit.activity": "The change was not saved: with the new difficulty a planned day would exceed 100%. Remove the activity from that day first.",
   "dialog.activity.gone": "This activity no longer exists: a newer version of the planner from the cloud replaced the catalog.",
   "dialog.activity.name.duplicate": "An activity with this name already exists.",
+  "dialog.activity.delete.title": "Delete \"{name}\"?",
+  "dialog.activity.delete.message": "Planned slots that will be cleared: {count}. You can undo this until you close the planner or a newer version arrives from the cloud.",
+  "dialog.activity.delete.button": "Delete",
   "button.ok": "OK",
   "button.cancel": "Cancel"
 }

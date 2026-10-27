@@ -45,6 +45,9 @@
   "dialog.dayLimit.activity": "Die Änderung wurde nicht gespeichert: Mit dem neuen Schweregrad würde ein geplanter Tag 100 % überschreiten. Entfernen Sie die Aktivität zuerst aus diesem Tag.",
   "dialog.activity.gone": "Diese Aktivität existiert nicht mehr: Eine neuere Version des Planers aus der Cloud hat den Katalog ersetzt.",
   "dialog.activity.name.duplicate": "Eine Aktivität mit diesem Namen existiert bereits.",
+  "dialog.activity.delete.title": "\"{name}\" löschen?",
+  "dialog.activity.delete.message": "Geplante Slots, die geleert werden: {count}. Sie können das rückgängig machen, bis Sie den Planer schließen oder eine neuere Version aus der Cloud eintrifft.",
+  "dialog.activity.delete.button": "Löschen",
   "button.ok": "OK",
   "button.cancel": "Abbrechen"
 }

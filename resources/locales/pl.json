@@ -45,6 +45,9 @@
   "dialog.dayLimit.activity": "Zmiana nie została zapisana: przy nowej trudności zaplanowany dzień przekroczyłby 100%. Najpierw usuń aktywność z tego dnia.",
   "dialog.activity.gone": "Ta aktywność już nie istnieje: nowsza wersja planera z chmury zastąpiła katalog.",
   "dialog.activity.name.duplicate": "Aktywność o tej nazwie już istnieje.",
+  "dialog.activity.delete.title": "Usunąć \"{name}\"?",
+  "dialog.activity.delete.message": "Zaplanowane sloty, które zostaną wyczyszczone: {count}. Można to cofnąć do zamknięcia planera lub pobrania nowszej wersji z chmury.",
+  "dialog.activity.delete.button": "Usuń",
   "button.ok": "OK",
   "button.cancel": "Anuluj"
 }

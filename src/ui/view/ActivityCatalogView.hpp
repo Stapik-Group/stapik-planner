@@ -29,7 +29,7 @@ private:
 
     void onAddRequested();
     void onEditRequested(const std::string& id);
-    void onDeleteRequested(const std::string& id) const;
+    void onDeleteRequested(const std::string& id);
 
     [[nodiscard]] std::vector<std::string> namesExcept(const std::optional<std::size_t>& index) const;
     void showActivityDialog(const std::optional<std::string>& editedId);

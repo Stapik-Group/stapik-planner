@@ -505,3 +505,15 @@ TEST_F(PlannerModelTest, AnActivityIsFoundByItsIdWhateverItsPosition)
     EXPECT_EQ(*index, 0U);
     EXPECT_FALSE(m_model->findActivity("missing").has_value());
 }
+
+TEST_F(PlannerModelTest, PlannedSlotCountCountsEveryPlannedCopyOfAnActivity)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    planInFirstSlot(Weekday::MONDAY, 0);
+    planInFirstSlot(Weekday::TUESDAY, 0);
+
+    EXPECT_EQ(m_model->plannedSlotCount(m_model->activities()[0].id), 2U);
+    EXPECT_EQ(m_model->plannedSlotCount(m_model->activities()[1].id), 0U);
+    EXPECT_EQ(m_model->plannedSlotCount("missing"), 0U);
+}

@@ -4,6 +4,7 @@
 #include "../widget/catalog/ActivityCatalogItemRow.hpp"
 
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/ConfirmDialog.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <gtkmm/window.h>
@@ -79,10 +80,42 @@ void ActivityCatalogView::onEditRequested(const std::string& id)
     showActivityDialog(id);
 }
 
-void ActivityCatalogView::onDeleteRequested(const std::string& id) const
+void ActivityCatalogView::onDeleteRequested(const std::string& id)
 {
-    if (const auto index = m_model.findActivity(id); index.has_value())
+    const auto index = m_model.findActivity(id);
+    if (!index.has_value())
+        return;
+
+    const auto plannedSlots = m_model.plannedSlotCount(id);
+    if (plannedSlots == 0)
+    {
         m_model.removeActivity(*index);
+        return;
+    }
+
+    auto* window = dynamic_cast<Gtk::Window*>(get_root());
+    if (window == nullptr)
+        return;
+
+    const auto& localeManager = LocaleManager::instance();
+    const LocalizationEngine::Arguments arguments = {
+        { "name", m_model.activities()[*index].name },
+        { "count", std::to_string(plannedSlots) }
+    };
+
+    showConfirmDialog(
+        *window,
+        ConfirmDialogOptions{
+            .title = localeManager.translate("dialog.activity.delete.title", arguments),
+            .message = localeManager.translate("dialog.activity.delete.message", arguments),
+            .confirmLabel = localeManager.translate("dialog.activity.delete.button"),
+            .destructive = true
+        },
+        [this, id]
+        {
+            if (const auto current = m_model.findActivity(id); current.has_value())
+                m_model.removeActivity(*current);
+        });
 }
 
 std::vector<std::string> ActivityCatalogView::namesExcept(const std::optional<std::size_t>& index) const
