@@ -48,6 +48,10 @@
     transition: all 300ms ease;
 }
 
+.load-bar.full block.filled {
+    background-color: #800000;
+}
+
 .load-bar block.empty {
     background-color: transparent;
     border: none;

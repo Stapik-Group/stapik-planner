@@ -35,14 +35,8 @@ void ScheduleDayLoadBar::setLoad(int percent)
     m_levelBar.set_value(std::min(percent, MAX_LOAD));
     m_loadLabel.set_text(std::format("{}%", percent));
 
-    if (percent >= 100)
-    {
-        m_levelBar.remove_offset_value("low");
-        m_levelBar.remove_offset_value("high");
-        m_levelBar.remove_offset_value("full");
-        m_levelBar.add_offset_value("danger", 100.0);
+    if (percent >= MAX_LOAD)
         m_levelBar.add_css_class("full");
-    }
     else
         m_levelBar.remove_css_class("full");
 }
