@@ -98,16 +98,19 @@ void ActivityCatalogView::showActivityDialog(const int editIndex)
         ? new ActivityDialog(*window, m_model.activities()[static_cast<std::size_t>(editIndex)])
         : new ActivityDialog(*window);
 
-    dialog->signal_response().connect([this, dialog, editIndex](const int responseId)
+    dialog->signal_response().connect([this, window, dialog, editIndex](const int responseId)
     {
         if (responseId == Gtk::ResponseType::OK)
         {
             if (auto result = dialog->getResult(); result.has_value())
             {
-                if (editIndex >= 0)
-                    m_model.updateActivity(static_cast<std::size_t>(editIndex), std::move(result.value()));
-                else
+                if (editIndex < 0)
                     m_model.addActivity(std::move(result.value()));
+                else if (!m_model.updateActivity(static_cast<std::size_t>(editIndex), std::move(result.value())))
+                {
+                    const auto& localeManager = LocaleManager::instance();
+                    showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.activity"));
+                }
             }
         }
         dialog->hide();

@@ -1,6 +1,11 @@
 #include "ScheduleDaySlotContainer.hpp"
 #include "stapik/locale/LocaleManager.hpp"
 
+#include <gtkmm/label.h>
+
+#include <format>
+#include <memory>
+
 ScheduleDaySlotContainer::ScheduleDaySlotContainer() :
     Box(Gtk::Orientation::HORIZONTAL, 4)
 {
@@ -18,8 +23,71 @@ void ScheduleDaySlotContainer::initLayout()
     m_selectionConnection = m_dropDown.property_selected().signal_changed().connect([this] { m_signalChanged.emit(); });
     m_localeConnection = LocaleManager::instance().signalLocaleChanged().connect([this] { refreshModel(getSelected()); });
 
+    initListFactory();
+
     set_margin(2);
     append(m_dropDown);
+}
+
+void ScheduleDaySlotContainer::initListFactory()
+{
+    const auto factory = Gtk::SignalListItemFactory::create();
+
+    factory->signal_setup().connect([](const Glib::RefPtr<Gtk::ListItem>& item)
+    {
+        auto* label = Gtk::make_managed<Gtk::Label>();
+        label->set_halign(Gtk::Align::START);
+        item->set_child(*label);
+    });
+    factory->signal_bind().connect(sigc::mem_fun(*this, &ScheduleDaySlotContainer::bindItem));
+    factory->signal_unbind().connect(sigc::mem_fun(*this, &ScheduleDaySlotContainer::unbindItem));
+
+    m_dropDown.set_list_factory(factory);
+}
+
+void ScheduleDaySlotContainer::bindItem(const Glib::RefPtr<Gtk::ListItem>& item)
+{
+    auto* label = dynamic_cast<Gtk::Label*>(item->get_child());
+    const auto text = std::dynamic_pointer_cast<Gtk::StringObject>(item->get_item());
+    if (label == nullptr || text == nullptr)
+        return;
+
+    label->set_text(text->get_string());
+    m_boundItems[item.get()] = item;
+    applyAvailability(*item);
+}
+
+void ScheduleDaySlotContainer::unbindItem(const Glib::RefPtr<Gtk::ListItem>& item)
+{
+    m_boundItems.erase(item.get());
+}
+
+void ScheduleDaySlotContainer::applyAvailability(Gtk::ListItem& item) const
+{
+    const bool selectable = isSelectableAt(item.get_position());
+
+    if (auto* child = item.get_child())
+        child->set_sensitive(selectable);
+
+    item.set_selectable(selectable);
+    item.set_activatable(selectable);
+}
+
+bool ScheduleDaySlotContainer::isSelectableAt(const guint position) const
+{
+    if (position == 0 || position == m_dropDown.get_selected())
+        return true;
+
+    const auto activityIndex = static_cast<std::size_t>(position - 1);
+    return activityIndex < m_activities.size() && Activity::difficultyLoad(m_activities[activityIndex].difficulty) <= m_capacity;
+}
+
+void ScheduleDaySlotContainer::setCapacity(const int capacity)
+{
+    m_capacity = capacity;
+
+    for (const auto& [pointer, item] : m_boundItems)
+        applyAvailability(*item);
 }
 
 void ScheduleDaySlotContainer::setActivities(const Activities& activities)
@@ -39,7 +107,7 @@ void ScheduleDaySlotContainer::refreshModel(const std::optional<Activity>& selec
 
     m_list_model->append(LocaleManager::instance().translate("schedule.slot.empty"));
     for (const auto& activity : m_activities)
-        m_list_model->append(activity.name);
+        m_list_model->append(std::format("{} ({}%)", activity.name, Activity::difficultyLoad(activity.difficulty)));
 
     selectActivity(selected);
     m_selectionConnection.unblock();

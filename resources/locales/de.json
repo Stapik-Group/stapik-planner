@@ -40,6 +40,9 @@
   "dialog.backup.restoreFailed.text": "Die Datei ist nicht lesbar oder stammt von einer neueren Version des Planers.",
   "dialog.save.failed.title": "Der Planer konnte nicht gespeichert werden",
   "dialog.save.failed.text": "Ihre Änderungen sind nur im geöffneten Fenster, aber nicht auf der Festplatte: {error}",
+  "dialog.dayLimit.title": "Tageslast-Limit",
+  "dialog.dayLimit.slot": "Diese Aktivität passt nicht in den Tag: Die Last eines Tages darf 100 % nicht überschreiten.",
+  "dialog.dayLimit.activity": "Die Änderung wurde nicht gespeichert: Mit dem neuen Schweregrad würde ein geplanter Tag 100 % überschreiten. Entfernen Sie die Aktivität zuerst aus diesem Tag.",
   "button.ok": "OK",
   "button.cancel": "Abbrechen"
 }

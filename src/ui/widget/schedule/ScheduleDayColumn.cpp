@@ -81,11 +81,17 @@ void ScheduleDayColumn::onSlotChanged()
 {
     const int load = getDayPlan().totalLoad();
 
-    m_loadBar.setLoad(std::min(load, LOAD_LIMIT));
+    m_loadBar.setLoad(std::min(load, DayPlan::LOAD_LIMIT));
 
-    const bool limitReached = load >= LOAD_LIMIT;
+    const bool limitReached = load >= DayPlan::LOAD_LIMIT;
     for (auto& slot : m_slots)
+    {
+        const auto selected = slot.getSelected();
+        const int ownLoad = selected.has_value() ? Activity::difficultyLoad(selected->difficulty) : 0;
+
+        slot.setCapacity(DayPlan::LOAD_LIMIT - (load - ownLoad));
         slot.setEnabled(!limitReached);
+    }
 
     if (!m_suppressChangeSignal)
         m_signalChanged.emit();

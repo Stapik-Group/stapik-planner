@@ -42,10 +42,10 @@ public:
     [[nodiscard]] const WeekPlan& weekPlan() const;
 
     void addActivity(Activity activity);
-    void updateActivity(std::size_t index, Activity activity);
+    bool updateActivity(std::size_t index, Activity activity);
     void removeActivity(std::size_t index);
     [[nodiscard]] bool updateSlotCount(int newSlotCount);
-    void updateDay(Weekday weekday, DayPlan dayPlan);
+    bool updateDay(Weekday weekday, DayPlan dayPlan);
 
     [[nodiscard]] stapik::command::UndoStack& undoStack();
 

@@ -26,6 +26,22 @@ namespace
         }
     }
 
+    bool raisesLoadAboveLimit(const DayPlan& before, const DayPlan& after)
+    {
+        return after.totalLoad() > DayPlan::LOAD_LIMIT && after.totalLoad() > before.totalLoad();
+    }
+
+    bool raisesAnyDayAboveLimit(const WeekPlan& before, const WeekPlan& after)
+    {
+        for (std::size_t index = 0; index < before.size() && index < after.size(); ++index)
+        {
+            if (raisesLoadAboveLimit(before[index], after[index]))
+                return true;
+        }
+
+        return false;
+    }
+
     void clearPlannedCopies(WeekPlan& weekPlan, const std::string& activityId)
     {
         for (auto& day : weekPlan)
@@ -122,17 +138,21 @@ void PlannerModel::addActivity(Activity activity)
     execute("command.activity.add", std::move(after));
 }
 
-void PlannerModel::updateActivity(const std::size_t index, Activity activity)
+bool PlannerModel::updateActivity(const std::size_t index, Activity activity)
 {
     if (index >= m_document.activities.size())
-        return;
+        return false;
 
     auto after = content();
     activity.id = after.activities[index].id;
     after.activities[index] = std::move(activity);
     refreshPlannedCopies(after.weekPlan, after.activities[index]);
 
+    if (raisesAnyDayAboveLimit(m_document.weekPlan, after.weekPlan))
+        return false;
+
     execute("command.activity.edit", std::move(after));
+    return true;
 }
 
 void PlannerModel::removeActivity(const std::size_t index)
@@ -169,16 +189,17 @@ bool PlannerModel::updateSlotCount(const int newSlotCount)
     return dataLost;
 }
 
-void PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
+bool PlannerModel::updateDay(const Weekday weekday, DayPlan dayPlan)
 {
     const auto index = static_cast<std::size_t>(weekday);
-    if (index >= m_document.weekPlan.size())
-        return;
+    if (index >= m_document.weekPlan.size() || raisesLoadAboveLimit(m_document.weekPlan[index], dayPlan))
+        return false;
 
     auto after = content();
     after.weekPlan[index] = std::move(dayPlan);
 
     execute("command.slot.change", std::move(after), false);
+    return true;
 }
 
 stapik::command::UndoStack& PlannerModel::undoStack()

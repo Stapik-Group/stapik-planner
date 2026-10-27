@@ -19,6 +19,8 @@ enum class Weekday
 
 struct DayPlan
 {
+    static constexpr int LOAD_LIMIT = 100;
+
     Weekday weekday;
     std::vector<std::optional<Activity>> slots;
 
@@ -40,11 +42,6 @@ struct DayPlan
         }
 
         return load;
-    }
-
-    [[nodiscard]] bool canAddActivity(const Difficulty difficulty) const
-    {
-        return totalLoad() + Activity::difficultyLoad(difficulty) <= 100;
     }
 
     static std::string serializeWeekday(const Weekday weekday)

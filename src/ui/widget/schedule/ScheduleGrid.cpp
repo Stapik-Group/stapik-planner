@@ -1,5 +1,10 @@
 #include "ScheduleGrid.hpp"
 
+#include "stapik/locale/LocaleManager.hpp"
+#include "stapik/ui/dialog/DialogUtils.hpp"
+
+#include <gtkmm/window.h>
+
 ScheduleGrid::ScheduleGrid(PlannerModel& model) :
     m_model(model),
     m_slotCount(model.settings().slots)
@@ -52,19 +57,29 @@ void ScheduleGrid::initLayout()
     }
 }
 
-void ScheduleGrid::connectCellSignals() const
+void ScheduleGrid::connectCellSignals()
 {
     for (int i = 0; i < DAYS; ++i)
-    {
-        m_cells[i]->signalChanged().connect([this, i]
-        {
-            using enum Weekday;
-            static constexpr std::array weekdays = {
-                MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
-                FRIDAY, SATURDAY, SUNDAY
-            };
+        m_cells[i]->signalChanged().connect([this, i] { onDayChanged(i); });
+}
 
-            m_model.updateDay(weekdays[static_cast<size_t>(i)], m_cells[i]->getDayPlan());
-        });
+void ScheduleGrid::onDayChanged(const int index)
+{
+    using enum Weekday;
+    static constexpr std::array weekdays = {
+        MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
+        FRIDAY, SATURDAY, SUNDAY
+    };
+
+    const auto cellIndex = static_cast<std::size_t>(index);
+    if (m_model.updateDay(weekdays[cellIndex], m_cells[cellIndex]->getDayPlan()))
+        return;
+
+    m_cells[cellIndex]->setDayPlan(m_model.weekPlan()[cellIndex]);
+
+    if (auto* window = dynamic_cast<Gtk::Window*>(get_root()))
+    {
+        const auto& localeManager = LocaleManager::instance();
+        showMessageDialog(*window, localeManager.translate("dialog.dayLimit.title"), localeManager.translate("dialog.dayLimit.slot"));
     }
 }

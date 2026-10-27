@@ -393,3 +393,68 @@ TEST_F(PlannerModelTest, EditsAreStampedWithTheTimeOfTheInjectedClock)
 
     EXPECT_EQ(PlannerStorage().load().lastUpdate(), clock.now());
 }
+
+TEST_F(PlannerModelTest, ADayCannotBePushedOverTheLoadLimit)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Study", .difficulty = Difficulty::MEDIUM });
+    auto day = m_model->weekPlan()[0];
+    day.slots[0] = m_model->activities()[0];
+    day.slots[1] = m_model->activities()[1];
+    ASSERT_TRUE(m_model->updateDay(Weekday::MONDAY, day));
+
+    day.slots[2] = m_model->activities()[0];
+
+    EXPECT_FALSE(m_model->updateDay(Weekday::MONDAY, day));
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 80);
+    EXPECT_FALSE(m_model->weekPlan()[0].slots[2].has_value());
+}
+
+TEST_F(PlannerModelTest, ADayMayReachTheLoadLimitExactly)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    auto day = m_model->weekPlan()[0];
+    day.slots[0] = m_model->activities()[0];
+    day.slots[1] = m_model->activities()[0];
+
+    EXPECT_TRUE(m_model->updateDay(Weekday::MONDAY, day));
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
+}
+
+TEST_F(PlannerModelTest, RaisingTheDifficultyOfAnActivityIsRefusedWhenAPlannedDayWouldOverflow)
+{
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    m_model->addActivity(Activity{ .name = "Study", .difficulty = Difficulty::MEDIUM });
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    auto day = m_model->weekPlan()[0];
+    day.slots[0] = m_model->activities()[0];
+    day.slots[1] = m_model->activities()[1];
+    day.slots[2] = m_model->activities()[2];
+    ASSERT_TRUE(m_model->updateDay(Weekday::MONDAY, day));
+
+    EXPECT_FALSE(m_model->updateActivity(2, Activity{ .name = "Reading", .difficulty = Difficulty::HARD }));
+
+    EXPECT_EQ(m_model->activities()[2].difficulty, Difficulty::LIGHT);
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 90);
+}
+
+TEST_F(PlannerModelTest, AnOverloadedDayFromAFileCanBeRelievedButNotLoadedFurther)
+{
+    auto document = PlannerDocument::createDefault();
+    document.activities = { Activity{ .id = "gym", .name = "Gym", .difficulty = Difficulty::HARD } };
+    for (std::size_t slot = 0; slot < 3; ++slot)
+        document.weekPlan[0].slots[slot] = document.activities[0];
+    m_model.reset();
+    ASSERT_TRUE(PlannerStorage().save(document));
+    m_model = std::make_unique<PlannerModel>();
+    ASSERT_EQ(m_model->weekPlan()[0].totalLoad(), 150);
+
+    auto day = m_model->weekPlan()[0];
+    day.slots[3] = m_model->activities()[0];
+    EXPECT_FALSE(m_model->updateDay(Weekday::MONDAY, day));
+
+    day.slots[3].reset();
+    day.slots[2].reset();
+    EXPECT_TRUE(m_model->updateDay(Weekday::MONDAY, day));
+    EXPECT_EQ(m_model->weekPlan()[0].totalLoad(), 100);
+}

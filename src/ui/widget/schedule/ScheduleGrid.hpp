@@ -20,5 +20,6 @@ private:
     std::vector<std::unique_ptr<ScheduleDayColumn>> m_cells;
 
     void initLayout();
-    void connectCellSignals() const;
+    void connectCellSignals();
+    void onDayChanged(int index);
 };

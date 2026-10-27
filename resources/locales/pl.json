@@ -40,6 +40,9 @@
   "dialog.backup.restoreFailed.text": "Plik jest nieczytelny albo zapisała go nowsza wersja planera.",
   "dialog.save.failed.title": "Nie udało się zapisać planera",
   "dialog.save.failed.text": "Zmiany są tylko w otwartym oknie, ale nie na dysku: {error}",
+  "dialog.dayLimit.title": "Limit obciążenia dnia",
+  "dialog.dayLimit.slot": "Ta aktywność nie mieści się w dniu: obciążenie dnia nie może przekraczać 100%.",
+  "dialog.dayLimit.activity": "Zmiana nie została zapisana: przy nowej trudności zaplanowany dzień przekroczyłby 100%. Najpierw usuń aktywność z tego dnia.",
   "button.ok": "OK",
   "button.cancel": "Anuluj"
 }

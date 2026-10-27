@@ -40,6 +40,9 @@
   "dialog.backup.restoreFailed.text": "The file is unreadable or was written by a newer version of the planner.",
   "dialog.save.failed.title": "The planner could not be saved",
   "dialog.save.failed.text": "Your changes stay in the open window but are not on disk: {error}",
+  "dialog.dayLimit.title": "Day load limit",
+  "dialog.dayLimit.slot": "This activity does not fit in the day: the load of a day cannot exceed 100%.",
+  "dialog.dayLimit.activity": "The change was not saved: with the new difficulty a planned day would exceed 100%. Remove the activity from that day first.",
   "button.ok": "OK",
   "button.cancel": "Cancel"
 }
