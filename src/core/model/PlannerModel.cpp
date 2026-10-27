@@ -343,9 +343,15 @@ void PlannerModel::restoreContent(const Content& content, const bool announceWee
         m_signalWeekPlanChanged.emit();
 }
 
+PlannerDocument::TimePoint PlannerModel::nextUpdateTime() const
+{
+    const PlannerDocument::TimePoint earliest = std::chrono::floor<std::chrono::seconds>(m_document.updatedAt) + std::chrono::seconds{ 1 };
+    return std::max(m_clock.now(), earliest);
+}
+
 void PlannerModel::persist()
 {
-    m_document.updatedAt = m_clock.now();
+    m_document.updatedAt = nextUpdateTime();
     saveToDisk();
     m_cloudSession.pushChange(m_document);
 }

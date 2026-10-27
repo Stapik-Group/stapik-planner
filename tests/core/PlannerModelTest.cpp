@@ -59,6 +59,16 @@ namespace
             return m_model->weekPlan()[static_cast<std::size_t>(weekday)].slots[0];
         }
 
+        void useClock(const stapik::time::IClock& clock)
+        {
+            m_model.reset();
+            m_model = std::make_unique<PlannerModel>(
+                std::make_unique<PlannerStorage>(),
+                stapik::sync::defaultCloudSessionHooks(PlannerModel::CLOUD_SLOT_KEY),
+                stapik::sync::AsyncSyncOptions{},
+                clock);
+        }
+
         stapik::test::ScopedEnvironment m_dataHome{ "XDG_DATA_HOME" };
         fs::path m_directory;
         std::unique_ptr<PlannerModel> m_model;
@@ -382,16 +392,39 @@ TEST_F(PlannerModelTest, TheHistoryNamesTheLastStep)
 TEST_F(PlannerModelTest, EditsAreStampedWithTheTimeOfTheInjectedClock)
 {
     const stapik::test::FakeClock clock;
-    m_model.reset();
-    m_model = std::make_unique<PlannerModel>(
-        std::make_unique<PlannerStorage>(),
-        stapik::sync::defaultCloudSessionHooks(PlannerModel::CLOUD_SLOT_KEY),
-        stapik::sync::AsyncSyncOptions{},
-        clock);
+    useClock(clock);
 
     m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
 
     EXPECT_EQ(PlannerStorage().load().lastUpdate(), clock.now());
+}
+
+TEST_F(PlannerModelTest, EditsInTheSameSecondGetIncreasingStamps)
+{
+    const stapik::test::FakeClock clock;
+    useClock(clock);
+
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+    const auto first = PlannerStorage().load().lastUpdate();
+    m_model->addActivity(Activity{ .name = "Reading", .difficulty = Difficulty::LIGHT });
+    const auto second = PlannerStorage().load().lastUpdate();
+
+    EXPECT_EQ(first, clock.now());
+    EXPECT_EQ(second, clock.now() + std::chrono::seconds{ 1 });
+}
+
+TEST_F(PlannerModelTest, AnEditIsStampedAfterTheVersionAlreadyKnownEvenWhenTheClockIsBehind)
+{
+    const stapik::test::FakeClock clock;
+    auto document = PlannerDocument::createDefault();
+    document.updatedAt = clock.now() + std::chrono::hours{ 1 };
+    m_model.reset();
+    ASSERT_TRUE(PlannerStorage().save(document));
+    useClock(clock);
+
+    m_model->addActivity(Activity{ .name = "Gym", .difficulty = Difficulty::HARD });
+
+    EXPECT_EQ(PlannerStorage().load().lastUpdate(), document.updatedAt + std::chrono::seconds{ 1 });
 }
 
 TEST_F(PlannerModelTest, ADayCannotBePushedOverTheLoadLimit)

@@ -100,6 +100,7 @@ private:
     [[nodiscard]] Content content() const;
     void execute(const char* descriptionKey, Content after, bool announceWeekPlan = true);
     void restoreContent(const Content& content, bool announceWeekPlan);
+    [[nodiscard]] PlannerDocument::TimePoint nextUpdateTime() const;
     void persist();
     void saveToDisk();
     void onCloudOutcome(const CloudOutcome& outcome);
