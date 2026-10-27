@@ -28,6 +28,7 @@
   "command.slots.count": "Slot-Anzahl ändern",
   "cloud.conflict.header": "Cloud-Version beibehalten",
   "cloud.conflict.secondary": "Ein anderes Gerät hat eine neuere Version des Planers gespeichert. Ihre letzten Änderungen wurden dadurch ersetzt.",
+  "settings.checkForUpdates": "Nach Updates suchen",
   "button.ok": "OK",
   "button.cancel": "Abbrechen"
 }

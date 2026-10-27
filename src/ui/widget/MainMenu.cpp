@@ -1,6 +1,8 @@
 #include "MainMenu.hpp"
 
+#include "stapik/app/AppContext.hpp"
 #include "stapik/locale/LocaleManager.hpp"
+#include "stapik/update/UpdateChecker.hpp"
 #include "stapik/ui/dialog/DialogUtils.hpp"
 
 #include <string>
@@ -11,6 +13,7 @@ MainMenu::MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const st
     m_window(window),
     m_model(model),
     m_actionHandler(window, model),
+    m_updateCheckSetting(stapik::app::AppContext::instance().settings(), stapik::update::CHECK_ENABLED_SETTING, true),
     m_standardMenu(window, StandardMenuOptions{
         .cloudItems = true,
         .undoRedoItems = true,
@@ -20,6 +23,7 @@ MainMenu::MainMenu(Gtk::ApplicationWindow& window, PlannerModel& model, const st
     })
 {
     m_actionHandler.registerActions();
+    m_standardMenu.settings().addBool("settings.checkForUpdates", m_updateCheckSetting);
     initSlotCountAction();
 
     m_standardMenu.addToMenu(StandardMenu::Target::Settings, [this](Gio::Menu& settingsMenu) { buildSlotCountMenu(settingsMenu); });

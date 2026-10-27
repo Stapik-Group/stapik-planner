@@ -28,6 +28,7 @@
   "command.slots.count": "changing the slot count",
   "cloud.conflict.header": "Cloud version kept",
   "cloud.conflict.secondary": "Another device saved a newer version of the planner. Your latest changes were replaced by it.",
+  "settings.checkForUpdates": "Check for updates",
   "button.ok": "OK",
   "button.cancel": "Cancel"
 }
